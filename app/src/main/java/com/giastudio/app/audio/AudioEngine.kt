@@ -69,7 +69,6 @@ class AudioEngine(context: Context) {
 
     init {
         sampleRate = pickSampleRate(context)
-        engineThread.start()
     }
 
     // -------------------------------------------------------------- helpers
@@ -102,7 +101,7 @@ class AudioEngine(context: Context) {
             if (stopped) break
             runPlaybackSession()
         }
-    }, "gia-playback")
+    }, "gia-playback").apply { start() }
 
     // ------------------------------------------------------------- playback
     fun requestPlay() {
