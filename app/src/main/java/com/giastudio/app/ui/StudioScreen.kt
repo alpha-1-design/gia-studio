@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RectangleShape
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -262,7 +262,7 @@ private fun Lane(
     laneH: Dp,
     ppsPx: Float,
     gridStep: Double,
-    density: androidx.compose.ui.density.Density,
+    density: androidx.compose.ui.unit.Density,
 ) {
     val canSeek = !ctrl.playing && !ctrl.recording
     Box(
@@ -304,7 +304,7 @@ private fun ClipBlock(
     t: Track,
     c: Clip,
     ppsPx: Float,
-    density: androidx.compose.ui.density.Density,
+    density: androidx.compose.ui.unit.Density,
 ) {
     val xPx = (c.startSec * ppsPx).roundToInt()
     val wPx = (c.lengthSec * ppsPx).roundToInt().coerceAtLeast(8)
@@ -315,7 +315,7 @@ private fun ClipBlock(
     Box(
         Modifier
             .offset { IntOffset(xPx, 0) }
-            .width(with(density) { wPx.toDp() })
+            .width((wPx / density.density).dp)
             .fillMaxHeight()
             .padding(vertical = 3.dp)
             .shadow(3.dp, RectangleShape, spotColor = Neo.Ink, ambientColor = Neo.Ink)
