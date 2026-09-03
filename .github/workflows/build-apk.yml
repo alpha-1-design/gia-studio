@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build GIA Studio APKs
