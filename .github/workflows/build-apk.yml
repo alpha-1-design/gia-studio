@@ -3,6 +3,8 @@ name: build-apk
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - build-error.txt
   workflow_dispatch:
 
 concurrency:
@@ -55,23 +57,16 @@ jobs:
           path: /tmp/gradle.log
           if-no-files-found: ignore
 
-      - name: Open issue with failure log
+      - name: Save failure log into the repo
         if: failure()
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          for n in $(gh issue list --repo "${{ github.repository }}" --state open --search 'in:title "GIA build log"' --json number -q '.[].number' 2>/dev/null); do
-            gh issue close --repo "${{ github.repository }}" "$n" >/dev/null 2>&1 || true
-          done
-          {
-            echo "Automated build log — run ${{ github.run_number }} sha ${{ github.sha }}"
-            echo
-            echo '```'
-            tail -n 300 /tmp/gradle.log 2>/dev/null || true
-            echo '```'
-          } > /tmp/issue.md
-          gh issue create --repo "${{ github.repository }}" --title "GIA build log (failure)" --body-file /tmp/issue.md >/dev/null 2>&1 || true
+          tail -n 400 /tmp/gradle.log > build-error.txt 2>/dev/null || echo 'no gradle log' > build-error.txt
+          git config user.email "actions@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add build-error.txt
+          git commit -m "record build error" --allow-empty >/dev/null 2>&1 || true
+          git push origin main || true
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
