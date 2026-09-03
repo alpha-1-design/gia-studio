@@ -1,0 +1,20 @@
+# --- Web template (kept locally, not part of the Android repo) ---
+.env.local
+node_modules
+dist
+src/convex/_generated
+bun.lock
+
+# --- Android / Gradle ---
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.cxx/
+*.keystore
+keystore.properties
+.DS_Store
