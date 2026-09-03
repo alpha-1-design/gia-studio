@@ -282,7 +282,7 @@ class StudioController(private val appContext: Context) {
         project = project.copy(
             tracks = project.tracks.map { tr ->
                 if (tr.id == trackId) tr.copy(armed = nowArmed) else tr.copy(armed = false)
-            }
+            }.toMutableList()
         )
         dirty = true
         if (nowArmed) selectedTrackId = trackId
@@ -374,9 +374,9 @@ class StudioController(private val appContext: Context) {
                         startSec = t.contentEndSec(),
                         lengthSec = samples.size.toDouble() / engine.sampleRate,
                     )
-                    val updated = t.copy(clips = t.clips + clip)
+                    val updated = t.copy(clips = (t.clips + clip).toMutableList())
                     project = project.copy(
-                        tracks = project.tracks.map { if (it.id == t.id) updated else it }
+                        tracks = project.tracks.map { if (it.id == t.id) updated else it }.toMutableList()
                     )
                     pushSnapshot()
                     selectedClipId = clip.id
@@ -393,7 +393,7 @@ class StudioController(private val appContext: Context) {
     private fun trackById(id: Int): Track? = project.tracks.firstOrNull { it.id == id }
 
     private fun mutateTrack(id: Int, change: (Track) -> Track) {
-        project = project.copy(tracks = project.tracks.map { if (it.id == id) change(it) else it })
+        project = project.copy(tracks = project.tracks.map { if (it.id == id) change(it) else it }.toMutableList())
         pushSnapshot()
         dirty = true
     }
@@ -446,7 +446,7 @@ class StudioController(private val appContext: Context) {
             color = project.tracks.size % 8,
             volume = 0.85f,
         )
-        project = project.copy(tracks = project.tracks + track)
+        project = project.copy(tracks = (project.tracks + track).toMutableList())
         pushSnapshot()
         dirty = true
         selectedTrackId = track.id
@@ -462,7 +462,7 @@ class StudioController(private val appContext: Context) {
             File(recordingsDir, c.fileName).delete()
             sampleCache.remove(c.id)
         }
-        project = project.copy(tracks = project.tracks.filter { it.id != id })
+        project = project.copy(tracks = project.tracks.filter { it.id != id }.toMutableList())
         if (selectedTrackId == id) selectedTrackId = project.tracks.firstOrNull()?.id ?: 0
         if (armTrackId == id) armTrackId = 0
         pushSnapshot()
@@ -500,7 +500,7 @@ class StudioController(private val appContext: Context) {
 
     private fun mutateClip(trackId: Int, clipId: String, change: (Clip) -> Clip) {
         mutateTrack(trackId) { t ->
-            t.copy(clips = t.clips.map { if (it.id == clipId) change(it) else it })
+            t.copy(clips = t.clips.map { if (it.id == clipId) change(it) else it }.toMutableList())
         }
     }
 
@@ -510,7 +510,13 @@ class StudioController(private val appContext: Context) {
         File(recordingsDir, clip.fileName).delete()
         sampleCache.remove(clipId)
         project = project.copy(
-            tracks = project.tracks.map { if (it.id == trackId) it.copy(clips = it.clips.filterNot { c -> c.id == clipId }) else it }
+            tracks = project.tracks.map {
+                if (it.id == trackId) {
+                    it.copy(clips = it.clips.filterNot { c -> c.id == clipId }.toMutableList())
+                } else {
+                    it
+                }
+            }.toMutableList()
         )
         if (selectedClipId == clipId) selectedClipId = null
         pushSnapshot()
@@ -609,7 +615,7 @@ class StudioController(private val appContext: Context) {
                         startSec = t.contentEndSec(),
                         lengthSec = samples.size.toDouble() / engine.sampleRate,
                     )
-                    mutateTrack(trackId) { it.copy(clips = it.clips + clip) }
+                    mutateTrack(trackId) { it.copy(clips = (it.clips + clip).toMutableList()) }
                     selectedClipId = clip.id
                     toast("Imported ${clip.name}")
                 }
