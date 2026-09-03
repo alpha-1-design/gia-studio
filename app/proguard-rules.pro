@@ -1,0 +1,1 @@
+# GIA Studio keeps R8/minification off for now — nothing to keep here yet.
