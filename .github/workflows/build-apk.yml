@@ -55,6 +55,24 @@ jobs:
           path: /tmp/gradle.log
           if-no-files-found: ignore
 
+      - name: Open issue with failure log
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --repo "${{ github.repository }}" --state open --search 'in:title "GIA build log"' --json number -q '.[].number' 2>/dev/null); do
+            gh issue close --repo "${{ github.repository }}" "$n" >/dev/null 2>&1 || true
+          done
+          {
+            echo "Automated build log — run ${{ github.run_number }} sha ${{ github.sha }}"
+            echo
+            echo '```'
+            tail -n 300 /tmp/gradle.log 2>/dev/null || true
+            echo '```'
+          } > /tmp/issue.md
+          gh issue create --repo "${{ github.repository }}" --title "GIA build log (failure)" --body-file /tmp/issue.md >/dev/null 2>&1 || true
+
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
