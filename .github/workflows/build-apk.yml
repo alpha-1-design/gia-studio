@@ -42,7 +42,18 @@ jobs:
 
       - name: Build debug and release APKs
         shell: bash
-        run: gradle assembleDebug assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle assembleDebug assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload gradle log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-log
+          path: /tmp/gradle.log
+          if-no-files-found: ignore
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4
