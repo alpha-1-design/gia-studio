@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Yellow disc (centered, inside the adaptive-icon safe zone) -->
+    <path
+        android:fillColor="#FFD400"
+        android:pathData="M54,36a22,22 0 1,0 0.001,0z" />
+    <!-- Ink waveform bars cut out of the disc -->
+    <path
+        android:fillColor="#101010"
+        android:pathData="M45,49h7v22h-7z" />
+    <path
+        android:fillColor="#101010"
+        android:pathData="M53.5,42h7v36h-7z" />
+    <path
+        android:fillColor="#101010"
+        android:pathData="M62,52h7v16h-7z" />
+</vector>
