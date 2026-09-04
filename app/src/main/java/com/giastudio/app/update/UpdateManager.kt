@@ -83,7 +83,7 @@ object UpdateManager {
             try {
                 if (conn.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
                 val total = conn.contentLengthLong
-                val dir = File(File(context.cacheDir, "updates")).apply { mkdirs() }
+                val dir = File(context.cacheDir, "updates").apply { mkdirs() }
                 val target = File(dir, "gia-update.apk")
                 val input = conn.inputStream
                 val output = target.outputStream()
