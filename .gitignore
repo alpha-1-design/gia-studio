@@ -16,5 +16,6 @@ local.properties
 captures/
 .cxx/
 *.keystore
+*.jks
 keystore.properties
 .DS_Store
