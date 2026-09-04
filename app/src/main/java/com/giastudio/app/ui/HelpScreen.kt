@@ -37,13 +37,30 @@ fun HelpScreen(ctrl: StudioController) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             NeoLabel("HELP & GUIDE", color = Neo.Ink)
             Spacer(Modifier.weight(1f))
-            Text("GIA Studio 0.1.0 — open source (GPLv3)", fontSize = 9.sp, color = Neo.InkSoft, fontWeight = FontWeight.Bold)
+            Text("GIA Studio 0.3.0 — open source (GPLv3)", fontSize = 9.sp, color = Neo.InkSoft, fontWeight = FontWeight.Bold)
         }
 
         Section("GIA Studio in 60 seconds") {
-            Bullet("Everything is a TRACK. Add recordings to tracks, arrange them on the timeline, mix them in the MIXER.")
+            Bullet("Everything is a TRACK — a lane on the timeline. Recordings, built-in beats and melodies each get their own lane, and the MIXER mixes all of them.")
+            Bullet("CREATE tab makes music from thin air: a built-in drum kit and synth sounds (e-piano, pluck, lead, pad, bass) — no instruments or samples needed.")
             Bullet("Landscape studio: hold your phone sideways — the app is designed for that.")
             Bullet("Work stays on your device until you export: top bar → SAVE keeps the session, EXPORT makes a WAV you can share.")
+        }
+
+        Section("Making music without playing anything (CREATE tab)") {
+            Bullet("DRUMS: 8 pads (kick, snare, clap, closed & open hat, toms, rim) over a 16-step grid. Tap pads on = a beat. Longer in BARS (1–8), faster/slower in TEMPO.")
+            Bullet("MELODY: same grid, but rows are notes inside a SCALE — choose Pentatonic/Major/Minor, a root note and a pitch range, and you literally cannot tap a wrong note.")
+            Bullet("Pick the SOUND per melody: E-Piano, Pluck, Lead, Pad or Bass — five built-in instruments, synthesized live.")
+            Bullet("▶ HEAR IT loops the pattern so you can judge it; tap any row pad to hear that sound alone; ＋ ADD TO SONG renders it to its own lane.")
+            Bullet("First instrument added starts a new lane at 0:00; adding another to the same lane chains a new section after it (snapped to the bar).")
+            Bullet("LOAD DEMO SONG replaces the session with “Afterglow” — a full 16-bar song you can play, mute lanes, delete clips, re-mix, and record over. It is the fastest way to learn.")
+        }
+
+        Section("Keeping sounds separate (voice vs music)") {
+            Bullet("Sources never get glued together: voice you record lands on its own clip; generated beats/melodies each get their own lane (Beat, Keys, Bass, Lead...).")
+            Bullet("Each lane has independent volume, pan, MUTE and SOLO in the MIXER, plus its own effects — so you can re-balance or silence any part without touching the rest.")
+            Bullet("Demo loaded? Mute the Beat lane and sing over just keys + bass. That is how a studio separates sound from voice: clean layers, mixed by you.")
+            Bullet("Splitting one already-mixed recording into stems (AI “remove the vocals”) needs an on-device neural network and its model — that is on the roadmap, and GIA won't fake it.")
         }
 
         Section("Recording your voice or an instrument") {
@@ -89,10 +106,26 @@ fun HelpScreen(ctrl: StudioController) {
             Bullet("Exports are shareable: WhatsApp, Drive, email — whatever your phone offers.")
         }
 
-        Section("Open roadmap (honest version 1.0 notes)") {
-            Bullet("GIA Studio 0.1 is a complete core loop — record, arrange, clean, mix, tune, export — but it is the first sprint of a much bigger studio.")
-            Bullet("Planned next: piano-roll MIDI + built-in instruments, movable clip arrangement editing, more FX (compressor, chorus, parametric EQ), MP3/FLAC export, project backups.")
-            Bullet("Planned engine work: a C++ core with Oboe for the lowest possible latency, plus the AAP/UAPMD/CLAP plugin format so third-party instruments & effects can be installed like desktop DAWs.")
+        Section("Updating the app (Settings tab)") {
+            Bullet("GIA can update itself: Settings → CHECK FOR UPDATES compares your version with the project's GitHub Releases and downloads a newer build straight to your phone.")
+            Bullet("When the download finishes, tap INSTALL NOW and follow the system prompt — allow \"install unknown apps\" for GIA Studio if your phone asks.")
+            Bullet("Updates keep your sessions and recordings — only the app itself is replaced. Your work lives in the app's private storage.")
+            Bullet("No internet? The app still works fully offline — updates simply wait until you're connected.")
+        }
+
+        Section("The C++ audio core (Settings tab)") {
+            Bullet("Version 0.3 starts the real engine: a C++ core built on Oboe (Google's low-latency audio library) that hosts plugins in a real-time render loop.")
+            Bullet("In Settings you can START ENGINE and PLAY TEST NOTE to hear it — a small native synthesizer hosted through the plugin system.")
+            Bullet("It is deliberately experimental: the normal Kotlin engine keeps doing all session work, and the app falls back to it automatically if the native core isn't present.")
+            Bullet("This is the foundation for the big milestone: installing third-party instruments and effects (AAP/CLAP/VST3-style plugins) like a desktop DAW.")
+        }
+
+        Section("Open roadmap (honest notes)") {
+            Bullet("Version 0.2 added the built-in instrument engine (drum kit + 5 synth voices), the beat/melody pattern grids, and a full demo song. Every one of them renders to real clips you can edit.")
+            Bullet("Version 0.3 added over-the-air updates (Settings → Check for updates) and started the C++ core: Oboe + a real plugin ABI with the first native synthesizer, hosted in a real-time render loop.")
+            Bullet("Planned next: route the Create tab's instruments through the native core, clip move/crop/split on the timeline, more drums & voices (808 kit, strings, choir), velocity & swing, more FX (compressor, chorus, parametric EQ), MP3/FLAC export.")
+            Bullet("Planned engine work: external plugin loading — installing AAP/CLAP/VST3-format instruments & effects like a desktop DAW (the plugin ABI in 0.3 was designed for this).")
+            Bullet("Planned AI: on-device stem separation (vocal removal from a mixed recording) and auto-tune-style pitch correction — both need a bundled neural model, so they arrive as a real milestone, not a stub.")
             Bullet("GIA Studio is free software under the GNU GPL v3 — fork it, learn from it, build on it.")
         }
 
