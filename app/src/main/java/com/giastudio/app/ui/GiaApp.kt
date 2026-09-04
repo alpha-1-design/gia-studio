@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
@@ -59,14 +60,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.giastudio.app.BuildConfig
 import com.giastudio.app.StudioController
+import com.giastudio.app.audio.NativeCore
 import com.giastudio.app.ui.theme.Neo
 import kotlinx.coroutines.delay
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     STUDIO("Studio", Icons.Filled.GraphicEq),
+    CREATE("Create", Icons.Filled.Piano),
     MIXER("Mixer", Icons.Filled.Tune),
     TUNER("Tuner", Icons.Filled.MusicNote),
+    SETTINGS("Settings", Icons.Filled.Settings),
     HELP("Help", Icons.Filled.HelpOutline),
 }
 
@@ -106,6 +111,8 @@ fun GiaApp(ctrl: StudioController) {
 
     LaunchedEffect(tab) {
         if (tab != Tab.TUNER) ctrl.stopTuner()
+        if (tab != Tab.CREATE) ctrl.stopPreview()
+        if (tab != Tab.SETTINGS) NativeCore.stop()
     }
 
     // auto-dismiss toasts
@@ -123,8 +130,10 @@ fun GiaApp(ctrl: StudioController) {
                 NavRail(tab, onSelect = { tab = it })
                 when (tab) {
                     Tab.STUDIO -> StudioScreen(ctrl, micGuard = ::micGuard)
+                    Tab.CREATE -> CreateScreen(ctrl)
                     Tab.MIXER -> MixerScreen(ctrl)
                     Tab.TUNER -> TunerScreen(ctrl, micGuard = ::micGuard)
+                    Tab.SETTINGS -> SettingsScreen(ctrl)
                     Tab.HELP -> HelpScreen(ctrl)
                 }
             }
@@ -291,7 +300,7 @@ private fun NavRail(tab: Tab, onSelect: (Tab) -> Unit) {
             }
         }
         Spacer(Modifier.weight(1f))
-        Text("v0.1", color = Neo.Paper.copy(alpha = 0.4f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        Text("v${BuildConfig.VERSION_NAME}", color = Neo.Paper.copy(alpha = 0.4f), fontSize = 8.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(6.dp))
     }
 }
@@ -554,9 +563,9 @@ private fun WelcomeDialog(onDone: () -> Unit, onHelp: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         Text("A pocket studio on your phone. Hold it sideways — everything below happens in 3 moves:", fontSize = 11.sp, color = Neo.InkSoft)
         Spacer(Modifier.height(8.dp))
-        WelcomeStep("1", "Record", "Tap the red ● on a track (ARM), then press REC and sing or play.")
-        WelcomeStep("2", "Clean up", "Tap your clip → Normalize / Denoise / Trim + fades to make the take sound polished.")
-        WelcomeStep("3", "Mix & share", "MIXER shapes the sound (EQ, delay, reverb, faders). Tuner tunes you. Export makes the WAV.")
+        WelcomeStep("1", "Play the demo", "CREATE → LOAD DEMO SONG. A finished song appears — play it, then pull it apart.")
+        WelcomeStep("2", "Make music", "CREATE tab: tap drum pads to build a beat, paint melody pads for keys/bass/lead, ADD TO SONG.")
+        WelcomeStep("3", "Record & share", "Arm the red ● track and sing over it. MIXER shapes each layer; Export makes the WAV.")
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             NeoButton("I'LL EXPLORE", onClick = onDone, container = Neo.PaperRaised, contentColor = Neo.Ink)
