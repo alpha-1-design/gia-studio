@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Over-the-air updates: check GitHub and download the new APK -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 8+: needed to install a downloaded update APK -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Needed only to share/export on Android 8 and below -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
