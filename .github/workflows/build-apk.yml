@@ -15,6 +15,9 @@ jobs:
   build:
     name: Build GIA Studio APKs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,16 +28,14 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install/verify Android SDK 35
+      - name: Set up Android SDK (accepts licenses, puts sdkmanager on PATH)
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK and CMake
         shell: bash
         run: |
-          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ -x "$SDKM" ]; then
-            yes | "$SDKM" --licenses > /dev/null 2>&1 || true
-            yes | "$SDKM" "platforms;android-35" "build-tools;35.0.0" > /dev/null 2>&1 || true
-          else
-            echo "cmdline-tools not found at $SDKM — relying on preinstalled SDK"
-          fi
+          yes | sdkmanager "ndk;26.1.10909125" "cmake;3.22.1" > /dev/null 2>&1 || \
+            echo "sdkmanager install skipped — Gradle will resolve the NDK itself"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -42,11 +43,38 @@ jobs:
           gradle-version: '8.10.2'
           cache-read-only: false
 
-      - name: Build debug and release APKs
+      # The release APK must stay signed with ONE stable key so over-the-air
+      # updates install over the previous version. The key is generated once
+      # and cached; if the cache ever evicts, the app must be reinstalled
+      # (Settings in the app explains updates come from GitHub Releases).
+      - name: Cache signing keystore
+        id: cache-keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.gia-keys
+          key: gia-keystore-v1
+
+      - name: Generate signing keystore (first run only)
+        if: steps.cache-keystore.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p ~/.gia-keys
+          keytool -genkeypair -keystore ~/.gia-keys/gia-release.jks \
+            -alias gia -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass giastudio123 -keypass giastudio123 \
+            -dname "CN=GIA Studio, OU=Mobile, O=GIA Studio, L=Earth, C=US"
+
+      - name: Configure release signing
+        shell: bash
+        run: |
+          cp ~/.gia-keys/gia-release.jks app/gia-release.jks
+          printf 'storeFile=gia-release.jks\nstorePassword=giastudio123\nkeyAlias=gia\nkeyPassword=giastudio123\n' > app/keystore.properties
+
+      - name: Build debug and release APKs (with native core)
         shell: bash
         run: |
           set -o pipefail
-          gradle assembleDebug assembleRelease --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
+          gradle assembleDebug assembleRelease -PwithNative --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log
           exit ${PIPESTATUS[0]}
 
       - name: Upload gradle log (always)
@@ -76,3 +104,28 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      # OTA channel: publish the signed release APK as a GitHub Release.
+      # The app checks releases/latest in Settings → Check for updates.
+      - name: Stage release APK
+        shell: bash
+        run: |
+          VER=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          cp app/build/outputs/apk/release/app-release.apk "GIA-Studio-v${VER}.apk"
+          ls -la "GIA-Studio-v${VER}.apk"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VER }}
+          name: GIA Studio v${{ env.VER }}
+          body: |
+            Automatic build from main.
+
+            What's in this version (see the app's Help tab for details):
+            - Everything from previous builds, plus the newest features.
+            - Install or update over the air: open the app → Settings → Check for updates.
+          files: GIA-Studio-v${{ env.VER }}.apk
+          overwrite: true
+          fail_on_unmatched_files: false
