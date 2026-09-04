@@ -1,0 +1,400 @@
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues FROM-CACHE
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug FROM-CACHE
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug FROM-CACHE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets FROM-CACHE
+> Task :app:desugarDebugFileDependencies FROM-CACHE
+> Task :app:checkDebugDuplicateClasses
+
+> Task :app:configureCMakeDebug[arm64-v8a]
+C/C++: Cloning into 'oboe-src'...
+C/C++: HEAD is now at b15f5e39 Update Version.h to reflect prefab changes for 16kb page sizes
+
+> Task :app:mergeExtDexDebug FROM-CACHE
+> Task :app:mergeLibDexDebug FROM-CACHE
+
+> Task :app:buildCMakeDebug[arm64-v8a] FAILED
+C/C++: ninja: Entering directory `/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a'
+C/C++: /usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DOBOE_ENABLE_LOGGING=1 -Dgiastudio_EXPORTS -I/home/runner/work/gia-studio/gia-studio/app/src/main/cpp -I/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a/_deps/oboe-src/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -MF CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o.d -o CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -c /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:25:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setAudioApi(oboe::AudioApi::AAudio)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:26:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setPerformanceMode(oboe::PerformanceMode::LowLatency)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:27:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setSharingMode(oboe::SharingMode::Exclusive)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:28:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setFormat(oboe::AudioFormat::Float)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:29:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setChannelCount(2)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:30:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setSampleRate(sampleRate > 0 ? sampleRate : 48000)
+C/C++:         ^
+C/C++:         ->
+C/C++: /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:31:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+C/C++:         .setCallback(this);
+C/C++:         ^
+C/C++:         ->
+C/C++: 7 errors generated.
+
+> Task :app:processDebugManifestForPackage
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_4-1788521261019.json
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
+> com.android.ide.common.process.ProcessException: ninja: Entering directory `/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a'
+  [1/67] Building CXX object CMakeFiles/giastudio.dir/plugins/TestSynth.cpp.o
+  [2/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AAudioLoader.cpp.o
+  [3/67] Building CXX object CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o
+  FAILED: CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o 
+  /usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DOBOE_ENABLE_LOGGING=1 -Dgiastudio_EXPORTS -I/home/runner/work/gia-studio/gia-studio/app/src/main/cpp -I/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a/_deps/oboe-src/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -MF CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o.d -o CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -c /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:25:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setAudioApi(oboe::AudioApi::AAudio)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:26:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setPerformanceMode(oboe::PerformanceMode::LowLatency)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:27:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setSharingMode(oboe::SharingMode::Exclusive)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:28:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setFormat(oboe::AudioFormat::Float)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:29:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setChannelCount(2)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:30:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setSampleRate(sampleRate > 0 ? sampleRate : 48000)
+          ^
+          ->
+  /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:31:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+          .setCallback(this);
+          ^
+          ->
+  7 errors generated.
+  [4/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AdpfWrapper.cpp.o
+  [5/67] Building CXX object CMakeFiles/giastudio.dir/jni_bridge.cpp.o
+  [6/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AudioSourceCaller.cpp.o
+  [7/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/Utilities.cpp.o
+  [8/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AudioStreamAAudio.cpp.o
+  ninja: build stopped: subcommand failed.
+  
+  C++ build system [build] failed while executing:
+      /usr/local/lib/android/sdk/cmake/3.22.1/bin/ninja \
+        -C \
+        /home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a \
+        giastudio
+    from /home/runner/work/gia-studio/gia-studio/app
+
+* Try:
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+* Exception is:
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:buildCMakeDebug[arm64-v8a]'.
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:130)
+	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:293)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:128)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: org.gradle.internal.UncheckedException: com.android.ide.common.process.ProcessException: ninja: Entering directory `/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a'
+[1/67] Building CXX object CMakeFiles/giastudio.dir/plugins/TestSynth.cpp.o
+[2/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AAudioLoader.cpp.o
+[3/67] Building CXX object CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o
+FAILED: CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o 
+/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DOBOE_ENABLE_LOGGING=1 -Dgiastudio_EXPORTS -I/home/runner/work/gia-studio/gia-studio/app/src/main/cpp -I/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a/_deps/oboe-src/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -MF CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o.d -o CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -c /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:25:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setAudioApi(oboe::AudioApi::AAudio)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:26:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:27:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setSharingMode(oboe::SharingMode::Exclusive)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:28:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setFormat(oboe::AudioFormat::Float)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:29:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setChannelCount(2)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:30:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setSampleRate(sampleRate > 0 ? sampleRate : 48000)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:31:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setCallback(this);
+        ^
+        ->
+7 errors generated.
+[4/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AdpfWrapper.cpp.o
+[5/67] Building CXX object CMakeFiles/giastudio.dir/jni_bridge.cpp.o
+[6/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AudioSourceCaller.cpp.o
+[7/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/Utilities.cpp.o
+[8/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AudioStreamAAudio.cpp.o
+ninja: build stopped: subcommand failed.
+
+C++ build system [build] failed while executing:
+    /usr/local/lib/android/sdk/cmake/3.22.1/bin/ninja \
+      -C \
+      /home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a \
+      giastudio
+  from /home/runner/work/gia-studio/gia-studio/app
+	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:69)
+	at org.gradle.internal.UncheckedException.throwAsUncheckedException(UncheckedException.java:42)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:128)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.doExecute(StandardTaskAction.java:58)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:51)
+	at org.gradle.api.internal.project.taskfactory.StandardTaskAction.execute(StandardTaskAction.java:29)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:244)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:229)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:212)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:195)
+	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:162)
+	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
+	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
+	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
+	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
+	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:42)
+	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:75)
+	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:50)
+	at org.gradle.internal.execution.steps.PreCreateOutputParentsStep.execute(PreCreateOutputParentsStep.java:28)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
+	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:61)
+	at org.gradle.internal.execution.steps.BroadcastChangingOutputsStep.execute(BroadcastChangingOutputsStep.java:26)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:69)
+	at org.gradle.internal.execution.steps.CaptureOutputsAfterExecutionStep.execute(CaptureOutputsAfterExecutionStep.java:46)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
+	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
+	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:189)
+	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$1(BuildCacheStep.java:75)
+	at org.gradle.internal.Either$Right.fold(Either.java:175)
+	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:62)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:73)
+	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:48)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:46)
+	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:35)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:75)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:53)
+	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:35)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:49)
+	at org.gradle.internal.execution.steps.ResolveIncrementalCachingStateStep.executeDelegate(ResolveIncrementalCachingStateStep.java:27)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:71)
+	at org.gradle.internal.execution.steps.AbstractResolveCachingStateStep.execute(AbstractResolveCachingStateStep.java:39)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
+	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:107)
+	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:56)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:64)
+	at org.gradle.internal.execution.steps.AbstractCaptureStateBeforeExecutionStep.execute(AbstractCaptureStateBeforeExecutionStep.java:43)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.executeWithNonEmptySources(AbstractSkipEmptyWorkStep.java:125)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:56)
+	at org.gradle.internal.execution.steps.AbstractSkipEmptyWorkStep.execute(AbstractSkipEmptyWorkStep.java:36)
+	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
+	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:75)
+	at org.gradle.internal.execution.steps.HandleStaleOutputsStep.execute(HandleStaleOutputsStep.java:41)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.lambda$execute$0(AssignMutableWorkspaceStep.java:35)
+	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:289)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:31)
+	at org.gradle.internal.execution.steps.AssignMutableWorkspaceStep.execute(AssignMutableWorkspaceStep.java:22)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:40)
+	at org.gradle.internal.execution.steps.ChoosePipelineStep.execute(ChoosePipelineStep.java:23)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.lambda$execute$2(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:67)
+	at org.gradle.internal.execution.steps.ExecuteWorkBuildOperationFiringStep.execute(ExecuteWorkBuildOperationFiringStep.java:39)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:46)
+	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:34)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:48)
+	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:35)
+	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:61)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:127)
+	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:116)
+	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
+	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
+	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
+	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:209)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:166)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
+	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
+	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
+	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:331)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:318)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.lambda$execute$0(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.internal.operations.CurrentBuildOperationRef.with(CurrentBuildOperationRef.java:85)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:314)
+	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:459)
+	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:376)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:48)
+Caused by: com.android.ide.common.process.ProcessException: ninja: Entering directory `/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a'
+[1/67] Building CXX object CMakeFiles/giastudio.dir/plugins/TestSynth.cpp.o
+[2/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AAudioLoader.cpp.o
+[3/67] Building CXX object CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o
+FAILED: CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o 
+/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++ --target=aarch64-none-linux-android26 --sysroot=/usr/local/lib/android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/linux-x86_64/sysroot -DOBOE_ENABLE_LOGGING=1 -Dgiastudio_EXPORTS -I/home/runner/work/gia-studio/gia-studio/app/src/main/cpp -I/home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a/_deps/oboe-src/include -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++17 -fno-limit-debug-info  -fPIC -std=c++17 -MD -MT CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -MF CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o.d -o CMakeFiles/giastudio.dir/engine/NativeEngine.cpp.o -c /home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:25:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setAudioApi(oboe::AudioApi::AAudio)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:26:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:27:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setSharingMode(oboe::SharingMode::Exclusive)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:28:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setFormat(oboe::AudioFormat::Float)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:29:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setChannelCount(2)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:30:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setSampleRate(sampleRate > 0 ? sampleRate : 48000)
+        ^
+        ->
+/home/runner/work/gia-studio/gia-studio/app/src/main/cpp/engine/NativeEngine.cpp:31:9: error: member reference type 'AudioStreamBuilder *' is a pointer; did you mean to use '->'?
+        .setCallback(this);
+        ^
+        ->
+7 errors generated.
+[4/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AdpfWrapper.cpp.o
+[5/67] Building CXX object CMakeFiles/giastudio.dir/jni_bridge.cpp.o
+[6/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/AudioSourceCaller.cpp.o
+[7/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/common/Utilities.cpp.o
+[8/67] Building CXX object _deps/oboe-build/CMakeFiles/oboe.dir/src/aaudio/AudioStreamAAudio.cpp.o
+ninja: build stopped: subcommand failed.
+
+C++ build system [build] failed while executing:
+    /usr/local/lib/android/sdk/cmake/3.22.1/bin/ninja \
+      -C \
+      /home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a \
+      giastudio
+  from /home/runner/work/gia-studio/gia-studio/app
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:288)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:108)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt$executeProcess$1.invoke(ExecuteProcess.kt:106)
+	at com.android.build.gradle.internal.cxx.timing.TimingEnvironmentKt.time(TimingEnvironment.kt:32)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess(ExecuteProcess.kt:106)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.executeProcess$default(ExecuteProcess.kt:85)
+	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.executeProcessBatch(CxxRegularBuilder.kt:332)
+	at com.android.build.gradle.internal.cxx.build.CxxRegularBuilder.build(CxxRegularBuilder.kt:129)
+	at com.android.build.gradle.tasks.ExternalNativeBuildTask.doTaskAction(ExternalNativeBuildTask.kt:72)
+	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask$taskAction$$inlined$recordTaskAction$1.invoke(BaseTask.kt:78)
+	at com.android.build.gradle.internal.tasks.Blocks.recordSpan(Blocks.java:51)
+	at com.android.build.gradle.internal.tasks.UnsafeOutputsTask.taskAction(UnsafeOutputsTask.kt:81)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at org.gradle.internal.reflect.JavaMethod.invoke(JavaMethod.java:125)
+	... 116 more
+Caused by: com.android.ide.common.process.ProcessException: Error while executing process /usr/local/lib/android/sdk/cmake/3.22.1/bin/ninja with arguments {-C /home/runner/work/gia-studio/gia-studio/app/.cxx/Debug/6y293k3r/arm64-v8a giastudio}
+	at com.android.build.gradle.internal.process.GradleProcessResult.buildProcessException(GradleProcessResult.java:73)
+	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:48)
+	at com.android.build.gradle.internal.cxx.process.ExecuteProcessKt.execute(ExecuteProcess.kt:277)
+	... 131 more
+Caused by: org.gradle.process.internal.ExecException: Process 'command '/usr/local/lib/android/sdk/cmake/3.22.1/bin/ninja'' finished with non-zero exit value 1
+	at org.gradle.process.internal.DefaultExecHandle$ExecResultImpl.assertNormalExitValue(DefaultExecHandle.java:442)
+	at com.android.build.gradle.internal.process.GradleProcessResult.assertNormalExitValue(GradleProcessResult.java:46)
+	... 132 more
+
+
+BUILD FAILED in 25s
+23 actionable tasks: 16 executed, 7 from cache
