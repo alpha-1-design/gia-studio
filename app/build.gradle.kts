@@ -22,8 +22,8 @@ android {
         applicationId = "com.giastudio.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -59,6 +59,31 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    // The C++ audio core (Oboe + plugin engine) is compiled only when Gradle
+    // is invoked with -PwithNative, so a missing NDK never blocks the
+    // Kotlin-only build. GitHub Actions passes the flag.
+    val withNative = gradle.startParameter.projectProperties.containsKey("withNative")
+    if (withNative) {
+        ndkVersion = "26.1.10909125"
+        defaultConfig {
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            }
+            externalNativeBuild {
+                cmake {
+                    cppFlags += "-std=c++17"
+                    arguments += "-DANDROID_STL=c++_shared"
+                }
+            }
+        }
+        externalNativeBuild {
+            cmake {
+                path = file("src/main/cpp/CMakeLists.txt")
+            }
+        }
     }
 
     packaging {
