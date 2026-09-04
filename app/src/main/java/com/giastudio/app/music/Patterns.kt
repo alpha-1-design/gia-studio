@@ -38,12 +38,12 @@ class StepPattern(val rowCount: Int, barCount: Int) {
 }
 
 /** A single sound placed at an exact time inside a rendered stem. */
-sealed class MusicEvent(val timeSec: Double) {
-    data class Drum(val sound: DrumSound, timeSec: Double, val vel: Float) : MusicEvent(timeSec)
+sealed class MusicEvent(open val timeSec: Double) {
+    data class Drum(val sound: DrumSound, override val timeSec: Double, val vel: Float) : MusicEvent(timeSec)
     data class Note(
         val sound: SynthSound,
         val midi: Int,
-        timeSec: Double,
+        override val timeSec: Double,
         val durSec: Double,
         val vel: Float,
     ) : MusicEvent(timeSec)

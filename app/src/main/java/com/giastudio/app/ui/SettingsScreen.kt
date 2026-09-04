@@ -199,7 +199,7 @@ fun SettingsScreen(ctrl: StudioController) {
                         color = Neo.Ok,
                     )
                     Spacer(Modifier.height(6.dp))
-                    Row(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         NeoButton(
                             "INSTALL NOW",
                             onClick = {
@@ -275,7 +275,7 @@ fun SettingsScreen(ctrl: StudioController) {
             )
             if (native) {
                 Spacer(Modifier.height(8.dp))
-                Row(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NeoButton(
                         if (engineOn) "STOP ENGINE" else "START ENGINE",
                         onClick = {
