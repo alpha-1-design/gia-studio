@@ -105,6 +105,7 @@ class AudioEngine(context: Context) {
 
     // ------------------------------------------------------------- playback
     fun requestPlay() {
+        stopPreview()
         playRequested = true
         wake()
     }
@@ -243,6 +244,109 @@ class AudioEngine(context: Context) {
         }
     }
 
+    // -------------------------------------------------------------- preview
+    private val previewLock = Object()
+    private var previewTrack: AudioTrack? = null
+
+    /** True while a Create-tab preview (pad hit or pattern loop) is sounding. */
+    @Volatile
+    var previewing = false
+        private set
+
+    /**
+     * Plays [samples] (mono floats at the engine's sample rate) through a
+     * dedicated preview channel, replacing anything already previewing. When
+     * [loop] is set the buffer loops seamlessly — used for beat/melody
+     * pattern previews in the Create tab.
+     */
+    fun playPreview(samples: FloatArray, loop: Boolean) {
+        if (samples.isEmpty()) {
+            stopPreview()
+            return
+        }
+        stopPreview()
+        val frames = samples.size
+        val shorts = ShortArray(frames)
+        for (i in 0 until frames) {
+            val v = (samples[i].coerceIn(-1f, 1f) * 32767f).toInt()
+            shorts[i] = v.toShort()
+        }
+        var t: AudioTrack? = null
+        try {
+            val minBytes = AudioTrack.getMinBufferSize(
+                sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
+            )
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+            val fmt = AudioFormat.Builder()
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(sampleRate)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .build()
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(attrs)
+                .setAudioFormat(fmt)
+                .setBufferSizeInBytes(max(frames * 2, minBytes))
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                .build()
+            t = track
+            if (track.state != AudioTrack.STATE_INITIALIZED) {
+                try {
+                    track.release()
+                } catch (_: Exception) {
+                }
+                return
+            }
+            val written = track.write(shorts, 0, shorts.size, AudioTrack.WRITE_BLOCKING)
+            if (written < shorts.size) {
+                try {
+                    track.release()
+                } catch (_: Exception) {
+                }
+                return
+            }
+            if (loop) track.setLoopPoints(0, frames, -1)
+            synchronized(previewLock) {
+                previewTrack = track
+                previewing = true
+            }
+            track.play()
+        } catch (e: Exception) {
+            onError?.invoke("Preview problem: ${e.message}")
+            stopPreview()
+            if (t != null) {
+                val stored: AudioTrack?
+                synchronized(previewLock) { stored = previewTrack }
+                if (t !== stored) {
+                    try {
+                        t.release()
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
+    }
+
+    fun stopPreview() {
+        val t: AudioTrack?
+        synchronized(previewLock) {
+            t = previewTrack
+            previewTrack = null
+            previewing = false
+        }
+        if (t != null) {
+            try {
+                t.pause()
+                t.flush()
+                t.release()
+            } catch (_: Exception) {
+            }
+        }
+    }
+
     // -------------------------------------------------------------- recording
     /**
      * Start recording to [file] (mono 16-bit WAV). While recording, the input
@@ -251,6 +355,7 @@ class AudioEngine(context: Context) {
      */
     fun startRecording(file: File, gateOn: Boolean, monitorOn: Boolean) {
         if (isRecording || isPlaying) return
+        stopPreview()
         isRecording = true
         Thread({
             recordLoop(file, gateOn, monitorOn)
@@ -397,6 +502,7 @@ class AudioEngine(context: Context) {
     // ----------------------------------------------------------------- tuner
     fun startTuner() {
         if (isTuning) return
+        stopPreview()
         isTuning = true
         Thread({
             tunerLoop()
@@ -462,6 +568,7 @@ class AudioEngine(context: Context) {
 
     // ---------------------------------------------------------------- release
     fun release() {
+        stopPreview()
         stopped = true
         playRequested = false
         isRecording = false
