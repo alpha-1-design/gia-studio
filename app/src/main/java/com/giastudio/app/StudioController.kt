@@ -25,10 +25,14 @@ import com.giastudio.app.model.StudioProject
 import com.giastudio.app.model.Track
 import com.giastudio.app.model.projectFromJson
 import com.giastudio.app.model.toJson
+import com.giastudio.app.music.DemoSongs
+import com.giastudio.app.music.SongRender
+import com.giastudio.app.music.StemSpec
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.ceil
 import org.json.JSONObject
 
 /** One-tap offline cleanup operations shown in the clip inspector. */
@@ -70,6 +74,8 @@ class StudioController(private val appContext: Context) {
         private set
     var recLevel by mutableStateOf(0f)
         private set
+    var previewing by mutableStateOf(false)
+        private set
     var busy by mutableStateOf(false)
         private set
     var busyText by mutableStateOf("")
@@ -99,6 +105,9 @@ class StudioController(private val appContext: Context) {
     private var pendingDiscard = false
 
     val anyArmed: Boolean get() = armTrackId != 0
+
+    /** The engine's native sample rate — Create tab renders previews at this. */
+    val sampleRate: Int get() = engine.sampleRate
 
     fun clearClipSelection() {
         selectedClipId = null
@@ -255,6 +264,8 @@ class StudioController(private val appContext: Context) {
 
     fun stopTransport() {
         engine.stop()
+        engine.stopPreview()
+        previewing = false
         playing = false
         recording = false
         playheadSec = 0.0
@@ -581,6 +592,187 @@ class StudioController(private val appContext: Context) {
     private fun fmtDb(d: Double): String {
         if (d <= -120.0) return "−∞ dB"
         return "%.1f dB".format(Locale.US, d)
+    }
+
+    // --------------------------------------------------------- built-in music
+    /** Play a rendered buffer (pad hit or full pattern loop) from the Create tab. */
+    fun playPreview(samples: FloatArray, loop: Boolean) {
+        engine.playPreview(samples, loop)
+        previewing = engine.previewing
+    }
+
+    fun stopPreview() {
+        engine.stopPreview()
+        previewing = false
+    }
+
+    /**
+     * Render a generated layer (beat/melody/chord stem) to a WAV clip and
+     * place it in the session. New instruments get their own lane starting at
+     * 0:00 so layers stack; adding to an existing instrument lane chains a
+     * new section after its content, snapped to the bar grid.
+     */
+    fun addMusicStem(spec: StemSpec) {
+        if (busy) return
+        busy("Rendering ${spec.kindName}…") {
+            try {
+                val samples = SongRender.renderStem(spec, engine.sampleRate)
+                if (samples.isEmpty()) {
+                    toast("Nothing to add — tap some steps first.")
+                    return@busy
+                }
+                if (spec.startSec != null) {
+                    commitStemAt(spec, samples, spec.startSec)
+                } else {
+                    val barSec = 60.0 / spec.bpm.coerceIn(30, 300)
+                    val lane = project.tracks.firstOrNull { it.name == spec.trackName }
+                    val trackId: Int
+                    val startSec: Double
+                    if (lane != null) {
+                        trackId = lane.id
+                        startSec = if (lane.clips.isEmpty()) 0.0 else {
+                            ceil(lane.contentEndSec() / barSec) * barSec
+                        }
+                    } else if (project.tracks.size < MAX_TRACKS) {
+                        val t = Track(
+                            id = project.nextTrackId(),
+                            name = spec.trackName,
+                            color = spec.color,
+                            volume = spec.volume,
+                            pan = spec.pan,
+                        )
+                        project = project.copy(tracks = (project.tracks + t).toMutableList())
+                        trackId = t.id
+                        startSec = 0.0
+                    } else {
+                        val quiet = project.tracks.minByOrNull { it.contentEndSec() }
+                            ?: return@busy
+                        trackId = quiet.id
+                        startSec = if (quiet.clips.isEmpty()) 0.0 else {
+                            ceil(quiet.contentEndSec() / barSec) * barSec
+                        }
+                    }
+                    commitStemAt(spec, samples, startSec, trackId)
+                }
+            } catch (e: Exception) {
+                toast("Could not create ${spec.kindName}: ${e.message}")
+            }
+        }
+    }
+
+    private fun commitStemAt(spec: StemSpec, samples: FloatArray, startSec: Double, forcedTrackId: Int? = null) {
+        val track = forcedTrackId?.let { trackById(it) }
+            ?: project.tracks.firstOrNull { it.name == spec.trackName }
+            ?: return
+        if (track.clips.size >= MAX_CLIPS_PER_TRACK) {
+            toast("That lane is full (${MAX_CLIPS_PER_TRACK} clips). Remove one on the Studio tab first.")
+            return
+        }
+        val stamp = System.currentTimeMillis()
+        val fileName = "gen_${stamp}_${track.id}.wav"
+        val file = File(recordingsDir, fileName)
+        writeMono16Wav(file, samples, engine.sampleRate)
+        val clipId = "gen_$stamp"
+        sampleCache[clipId] = samples
+        val clip = Clip(
+            id = clipId,
+            name = spec.label,
+            fileName = fileName,
+            startSec = startSec,
+            lengthSec = samples.size.toDouble() / engine.sampleRate,
+        )
+        val updated = track.copy(clips = (track.clips + clip).toMutableList())
+        project = project.copy(
+            tracks = project.tracks.map { if (it.id == track.id) updated else it }.toMutableList()
+        )
+        pushSnapshot()
+        selectedClipId = clipId
+        dirty = true
+        toast(
+            "Added “${clip.name}” on ${updated.name} at ${fmtMinSec(startSec)} — Studio tab ▶ to hear it."
+        )
+    }
+
+    /** Replace the session with the built-in demo song (regenerates audio). */
+    fun loadDemoSong() {
+        if (busy) return
+        busy("Building demo song…") {
+            try {
+                val stems = DemoSongs.afterglow()
+                val rendered = stems.map { spec -> spec to SongRender.renderStem(spec, engine.sampleRate) }
+                stopTransport()
+                project = StudioProject(name = DemoSongs.NAME, bpm = DemoSongs.BPM)
+                sampleCache.clear()
+                selectedClipId = null
+                selectedTrackId = 0
+                armTrackId = 0
+                // Keep the first five default lanes, re-cast as the demo's own:
+                // Vocal (empty, armed, ready for you) Beat / Keys / Bass / Lead.
+                val renames = listOf(5 to "Lead")
+                project = project.copy(
+                    tracks = project.tracks.map { t ->
+                        val renamed = renames.firstOrNull { it.first == t.id }
+                            ?.let { t.copy(name = it.second) } ?: t
+                        when (renamed.name) {
+                            "Beat" -> renamed.copy(volume = 0.8f, pan = 0f)
+                            "Keys" -> renamed.copy(
+                                volume = 0.7f, pan = -0.15f,
+                                fx = renamed.fx.copy(reverbOn = true, reverbMix = 0.16f),
+                            )
+                            "Bass" -> renamed.copy(
+                                volume = 0.8f, pan = 0.05f,
+                                fx = renamed.fx.copy(hpOn = true, hpHz = 45),
+                            )
+                            "Lead" -> renamed.copy(
+                                volume = 0.75f, pan = 0.15f,
+                                fx = renamed.fx.copy(
+                                    delayOn = true, delayMs = 300f, delayFeedback = 0.3f,
+                                    delayMix = 0.2f, reverbOn = true, reverbMix = 0.14f,
+                                ),
+                            )
+                            else -> renamed
+                        }
+                    }.toMutableList()
+                )
+                while (project.tracks.size > 5) {
+                    val last = project.tracks.maxByOrNull { it.id } ?: break
+                    removeTrack(last.id)
+                }
+                rendered.forEach { (spec, samples) ->
+                    val laneName = spec.trackName
+                    val lane = project.tracks.firstOrNull { it.name == laneName }
+                    if (lane == null) return@forEach
+                    val fileName = "demo_${laneName.lowercase().replace(" ", "_")}.wav"
+                    writeMono16Wav(File(recordingsDir, fileName), samples, engine.sampleRate)
+                    val clipId = "demo_${laneName.lowercase().replace(" ", "_")}"
+                    sampleCache[clipId] = samples
+                    val clip = Clip(
+                        id = clipId,
+                        name = spec.label,
+                        fileName = fileName,
+                        startSec = spec.startSec ?: 0.0,
+                        lengthSec = samples.size.toDouble() / engine.sampleRate,
+                    )
+                    val updated = lane.copy(clips = (lane.clips + clip).toMutableList())
+                    project = project.copy(
+                        tracks = project.tracks.map { if (it.id == lane.id) updated else it }.toMutableList()
+                    )
+                }
+                pushSnapshot()
+                playheadSec = 0.0
+                dirty = true
+                toast(
+                    "“${DemoSongs.NAME}” is ready — ▶ on the Studio tab. Tap the red ● on Vocal, then REC, to sing over it."
+                )
+            } catch (e: Exception) {
+                toast("Demo failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun fmtMinSec(sec: Double): String {
+        val total = sec.toInt().coerceAtLeast(0)
+        return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
     }
 
     // ---------------------------------------------------------------- import
