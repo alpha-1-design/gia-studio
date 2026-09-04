@@ -21,14 +21,15 @@ bool NativeEngine::start(int sampleRate) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     oboe::AudioStreamBuilder builder;
+    // Oboe's fluent setters return AudioStreamBuilder* — hence the arrow chain.
     builder.setDirection(oboe::Direction::Output)
-        .setAudioApi(oboe::AudioApi::AAudio)
-        .setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        .setSharingMode(oboe::SharingMode::Exclusive)
-        .setFormat(oboe::AudioFormat::Float)
-        .setChannelCount(2)
-        .setSampleRate(sampleRate > 0 ? sampleRate : 48000)
-        .setCallback(this);
+        ->setAudioApi(oboe::AudioApi::AAudio)
+        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
+        ->setSharingMode(oboe::SharingMode::Exclusive)
+        ->setFormat(oboe::AudioFormat::Float)
+        ->setChannelCount(2)
+        ->setSampleRate(sampleRate > 0 ? sampleRate : 48000)
+        ->setCallback(this);
 
     oboe::Result result = builder.openStream(&stream_);
     if (result != oboe::Result::OK) {
