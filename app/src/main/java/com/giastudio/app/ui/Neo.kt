@@ -156,6 +156,7 @@ fun NeoChip(
     modifier: Modifier = Modifier,
     activeColor: Color = Neo.Ink,
     textColor: Color = Neo.Paper,
+    fontSize: TextUnit = 11.sp,
 ) {
     Box(
         modifier
@@ -168,7 +169,7 @@ fun NeoChip(
         Text(
             label,
             color = if (active) textColor else Neo.Ink,
-            fontSize = 11.sp,
+            fontSize = fontSize,
             fontWeight = FontWeight.Black,
             maxLines = 1,
         )
