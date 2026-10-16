@@ -306,7 +306,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("MELODY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("GENERATE", false) {
                 pushUndo()
-                val scale = listOf(0, 2, 4, 5, 7, 9, 11).map { (it + rootKey) % 12 }
+                val scale = listOf(0, 2, 4, 5, 7, 9, 11)
                 val rootMidi = 60 + (octave - 4) * 12 + rootKey - 12
                 val degrees = listOf(0, 2, 4, 2, 5, 4, 2, 1)
                 val generated = buildList {
