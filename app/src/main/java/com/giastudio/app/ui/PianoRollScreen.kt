@@ -310,7 +310,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                                     .height(29.dp)
                                     .background(
                                         if (note != null && selectedKey == (midi to note.step)) Neo.Accent
-                                        else if (note != null) Neo.Ok
+                                        else if (note != null) Neo.Ok.copy(alpha = note.velocity.coerceIn(0.25f, 1f))
                                         else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
                                     )
                                     .border(0.5.dp, Neo.Ink.copy(alpha = 0.22f))
@@ -323,11 +323,6 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
                                         }
                                     }
-                                    .then(
-                                        if (note != null && step == note.step + note.length - 1)
-                                            Modifier.padding(end = 1.dp)
-                                        else Modifier
-                                    )
                                     .pointerInput(midi, step, cellWidth) {
                                         val startingNote = note
                                         if (startingNote != null) {
