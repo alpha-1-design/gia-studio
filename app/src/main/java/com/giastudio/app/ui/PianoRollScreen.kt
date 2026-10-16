@@ -180,13 +180,13 @@ fun PianoRollScreen(ctrl: StudioController) {
                             Text(Notes.nameOf(midi), fontSize = 9.sp, fontWeight = FontWeight.Bold, color = if (pc in blackKeys) Color.White else Neo.Ink)
                         }
                         repeat(steps) { step ->
-                            val note = notes.firstOrNull { it.midi == midi && it.step == step }
+                            val note = notes.firstOrNull { it.midi == midi && step >= it.step && step < it.step + it.length }
                             Box(Modifier.width(38.dp).height(29.dp).background(
-                                if (note != null && selectedKey == (midi to step)) Neo.Accent
+                                if (note != null && selectedKey == (midi to note.step)) Neo.Accent
                                 else if (note != null) Neo.Ok
                                 else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
                             ).border(0.5.dp, Neo.Ink.copy(alpha = 0.22f)).clickable {
-                                if (note != null) selectedKey = midi to step
+                                if (note != null) selectedKey = midi to note.step
                                 else {
                                     notes.add(RollNote(midi, step, noteLength, velocity))
                                     selectedKey = midi to step
