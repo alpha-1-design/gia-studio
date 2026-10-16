@@ -303,6 +303,28 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("${(swing * 100).toInt()}%", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Neo.Ink)
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("MELODY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Chip("GENERATE", false) {
+                pushUndo()
+                val scale = listOf(0, 2, 4, 5, 7, 9, 11).map { (it + rootKey) % 12 }
+                val rootMidi = 60 + (octave - 4) * 12 + rootKey - 12
+                val degrees = listOf(0, 2, 4, 2, 5, 4, 2, 1)
+                val generated = buildList {
+                    repeat(bars) { bar ->
+                        degrees.forEachIndexed { index, degree ->
+                            val midi = (rootMidi + scale[degree]).coerceIn(0, 127)
+                            val step = bar * 16 + index * 2
+                            if (notes.none { it.midi == midi && it.step == step }) {
+                                add(RollNote(midi, step, 2, listOf(0.78f, 0.58f, 0.7f, 0.62f)[index % 4]))
+                            }
+                        }
+                    }
+                }
+                notes.addAll(generated)
+                ctrl.toast("Generated a melody in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
+            }
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("PATTERN SLOTS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf("A", "B", "C").forEach { slot ->
                 Chip("SAVE $slot", false) { savePattern(slot) }
