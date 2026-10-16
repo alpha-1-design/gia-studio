@@ -70,6 +70,7 @@ import kotlinx.coroutines.delay
 private enum class Tab(val label: String, val icon: ImageVector) {
     STUDIO("Studio", Icons.Filled.GraphicEq),
     CREATE("Create", Icons.Filled.Piano),
+    PIANO("Piano Roll", Icons.Filled.Piano),
     MIXER("Mixer", Icons.Filled.Tune),
     TUNER("Tuner", Icons.Filled.MusicNote),
     SETTINGS("Settings", Icons.Filled.Settings),
@@ -112,7 +113,7 @@ fun GiaApp(ctrl: StudioController) {
 
     LaunchedEffect(tab) {
         if (tab != Tab.TUNER) ctrl.stopTuner()
-        if (tab != Tab.CREATE) ctrl.stopPreview()
+        if (tab != Tab.CREATE && tab != Tab.PIANO) ctrl.stopPreview()
         if (tab != Tab.SETTINGS) NativeCore.stop()
     }
 
@@ -132,6 +133,7 @@ fun GiaApp(ctrl: StudioController) {
                 when (tab) {
                     Tab.STUDIO -> StudioScreen(ctrl, micGuard = ::micGuard)
                     Tab.CREATE -> CreateScreen(ctrl)
+                    Tab.PIANO -> PianoRollScreen(ctrl)
                     Tab.MIXER -> MixerScreen(ctrl)
                     Tab.TUNER -> TunerScreen(ctrl, micGuard = ::micGuard)
                     Tab.SETTINGS -> SettingsScreen(ctrl)
