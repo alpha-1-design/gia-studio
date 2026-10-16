@@ -68,6 +68,18 @@ fun PianoRollScreen(ctrl: StudioController) {
             }
         }
     }
+    val undoStack = remember { mutableStateListOf<List<RollNote>>() }
+    val redoStack = remember { mutableStateListOf<List<RollNote>>() }
+    fun pushUndo() {
+        undoStack.add(notes.toList())
+        if (undoStack.size > 30) undoStack.removeAt(0)
+        redoStack.clear()
+    }
+    fun restoreNotes(snapshot: List<RollNote>) {
+        notes.clear()
+        notes.addAll(snapshot)
+        selectedKey = null
+    }
     val scope = rememberCoroutineScope()
     var sound by remember {
         mutableStateOf(runCatching {
@@ -169,14 +181,30 @@ fun PianoRollScreen(ctrl: StudioController) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(selectedNote?.let { "SELECTED  ${Notes.nameOf(it.midi)} · step ${it.step + 1}" } ?: "SELECT A NOTE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Spacer(Modifier.weight(1f))
+            Chip("UNDO", false) {
+                if (undoStack.isNotEmpty()) {
+                    redoStack.add(notes.toList())
+                    val previous = undoStack.removeAt(undoStack.lastIndex)
+                    restoreNotes(previous)
+                } else ctrl.toast("Nothing to undo yet.")
+            }
+            Chip("REDO", false) {
+                if (redoStack.isNotEmpty()) {
+                    undoStack.add(notes.toList())
+                    val next = redoStack.removeAt(redoStack.lastIndex)
+                    restoreNotes(next)
+                } else ctrl.toast("Nothing to redo yet.")
+            }
             Chip("− LEN", false) {
                 selectedNote?.let { n ->
+                    pushUndo()
                     val i = notes.indexOf(n)
                     if (i >= 0) notes[i] = n.copy(length = (n.length - 1).coerceAtLeast(1))
                 }
             }
             Chip("+ LEN", false) {
                 selectedNote?.let { n ->
+                    pushUndo()
                     val i = notes.indexOf(n)
                     if (i >= 0) notes[i] = n.copy(length = (n.length + 1).coerceAtMost(16))
                 }
@@ -185,6 +213,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                 selectedNote?.let { n ->
                     val targetStep = n.step + n.length
                     if (targetStep < steps && notes.none { it.midi == n.midi && it.step == targetStep }) {
+                        pushUndo()
                         val copy = n.copy(step = targetStep)
                         notes.add(copy)
                         selectedKey = copy.midi to copy.step
@@ -194,6 +223,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                 }
             }
             Chip("DELETE", false) {
+                if (selectedNote != null) pushUndo()
                 selectedNote?.let { notes.remove(it) }
                 selectedKey = null
             }
@@ -259,6 +289,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                                     .clickable {
                                         if (note != null) selectedKey = midi to note.step
                                         else {
+                                            pushUndo()
                                             notes.add(RollNote(midi, step, noteLength, velocity))
                                             selectedKey = midi to step
                                             ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
@@ -280,6 +311,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             var resizeMode = false
                                             detectDragGestures(
                                                 onDragStart = { offset ->
+                                                    pushUndo()
                                                     selectedKey = startingNote.midi to startingNote.step
                                                     val edgePx = with(density) { 10.dp.toPx() }
                                                     resizeMode = step == startingNote.step + startingNote.length - 1 &&
@@ -357,7 +389,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                 Text("＋ ADD TO SONG", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
         }
-        Box(Modifier.fillMaxWidth().background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable { notes.clear(); ctrl.stopPreview(); playing = false }.padding(11.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable { if (notes.isNotEmpty()) pushUndo(); notes.clear(); selectedKey = null; ctrl.stopPreview(); playing = false }.padding(11.dp), contentAlignment = Alignment.Center) {
             Text("CLEAR NOTES", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
         }
     }
