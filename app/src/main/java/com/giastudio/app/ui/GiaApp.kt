@@ -286,7 +286,6 @@ private fun TopIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
-@Composable
 private fun PhoneNavBar(tab: Tab, onSelect: (Tab) -> Unit) {
     Row(
         Modifier.fillMaxWidth().background(Neo.Ink).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 5.dp),
