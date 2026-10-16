@@ -101,13 +101,17 @@ fun PianoRollScreen(ctrl: StudioController) {
                 val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Couldn't read MIDI file")
                 decodeStandardMidi(bytes)
             }.onSuccess { imported ->
-                pushUndo()
-                notes.clear()
-                notes.addAll(imported.notes)
-                selectedKey = null
-                bars = ((imported.notes.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
-                ctrl.setBpm(imported.bpm)
-                ctrl.toast("Imported ${imported.notes.size} MIDI notes.")
+                if (imported.notes.isEmpty()) {
+                    ctrl.toast("That MIDI file contains no readable notes.")
+                } else {
+                    pushUndo()
+                    notes.clear()
+                    notes.addAll(imported.notes)
+                    selectedKey = null
+                    bars = ((imported.notes.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
+                    ctrl.setBpm(imported.bpm)
+                    ctrl.toast("Imported ${imported.notes.size} MIDI notes.")
+                }
             }.onFailure {
                 ctrl.toast("Couldn't import that MIDI file.")
             }
@@ -438,6 +442,7 @@ private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int): ByteArray {
     data class MidiMessage(val tick: Int, val order: Int, val bytes: ByteArray)
     val messages = mutableListOf<MidiMessage>()
     val microsPerQuarter = (60_000_000 / bpm.coerceIn(30, 300))
+    messages += MidiMessage(0, -2, byteArrayOf(0xFF.toByte(), 0x58, 0x04, 0x04, 0x02, 0x18, 0x08))
     messages += MidiMessage(0, -1, byteArrayOf(0xFF.toByte(), 0x51, 0x03, (microsPerQuarter shr 16).toByte(), (microsPerQuarter shr 8).toByte(), microsPerQuarter.toByte()))
     notes.forEach { n ->
         val start = n.step * 120
