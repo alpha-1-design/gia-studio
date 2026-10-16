@@ -1,6 +1,11 @@
 package com.giastudio.app.ui
 
 import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import org.json.JSONArray
 import org.json.JSONObject
 import androidx.compose.foundation.background
@@ -75,6 +80,16 @@ fun PianoRollScreen(ctrl: StudioController) {
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
+    var pendingMidiExport by remember { mutableStateOf<ByteArray?>(null) }
+    val exportMidiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/midi")) { uri: Uri? ->
+        val bytes = pendingMidiExport
+        if (uri != null && bytes != null) {
+            runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+                .onSuccess { ctrl.toast("MIDI file exported.") }
+                .onFailure { ctrl.toast("Couldn't save MIDI file.") }
+        }
+        pendingMidiExport = null
+    }
     var selectedKey by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val selectedNote = notes.firstOrNull { it.midi == selectedKey?.first && it.step == selectedKey?.second }
     val bpm = ctrl.project.bpm.coerceIn(30, 300)
@@ -310,6 +325,15 @@ fun PianoRollScreen(ctrl: StudioController) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.weight(1f).background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable {
+                if (notes.isEmpty()) ctrl.toast("Add notes before exporting MIDI.")
+                else {
+                    pendingMidiExport = encodeStandardMidi(notes.toList(), bpm)
+                    exportMidiLauncher.launch("GIA-Pattern.mid")
+                }
+            }.padding(12.dp), contentAlignment = Alignment.Center) {
+                Text("⇩ EXPORT MIDI", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            }
             Box(Modifier.weight(1f).background(if (playing) Neo.Record else Neo.Ink).clickable {
                 if (playing) { ctrl.stopPreview(); playing = false }
                 else {
@@ -343,5 +367,58 @@ fun PianoRollScreen(ctrl: StudioController) {
 private fun Chip(label: String, active: Boolean, onClick: () -> Unit) {
     Box(Modifier.background(if (active) Neo.Accent else Neo.PaperRaised).border(1.dp, Neo.Ink).clickable(onClick = onClick).padding(horizontal = 9.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
         Text(label, color = Neo.Ink, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+
+/** Encode the current pattern as a standard single-track MIDI file (format 0). */
+private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int): ByteArray {
+    data class MidiMessage(val tick: Int, val order: Int, val bytes: ByteArray)
+    val messages = mutableListOf<MidiMessage>()
+    val microsPerQuarter = (60_000_000 / bpm.coerceIn(30, 300))
+    messages += MidiMessage(0, -1, byteArrayOf(0xFF.toByte(), 0x51, 0x03, (microsPerQuarter shr 16).toByte(), (microsPerQuarter shr 8).toByte(), microsPerQuarter.toByte()))
+    notes.forEach { n ->
+        val start = n.step * 120
+        val end = (n.step + n.length) * 120
+        val pitch = n.midi.coerceIn(0, 127).toByte()
+        val vel = (n.velocity * 127).toInt().coerceIn(1, 127).toByte()
+        messages += MidiMessage(start, 1, byteArrayOf(0x90.toByte(), pitch, vel))
+        messages += MidiMessage(end, 0, byteArrayOf(0x80.toByte(), pitch, 0))
+    }
+    messages.sortWith(compareBy<MidiMessage> { it.tick }.thenBy { it.order })
+    val track = ByteArrayOutputStream()
+    var previousTick = 0
+    messages.forEach { event ->
+        writeMidiVariableLength(track, (event.tick - previousTick).coerceAtLeast(0))
+        track.write(event.bytes)
+        previousTick = event.tick
+    }
+    writeMidiVariableLength(track, 0)
+    track.write(byteArrayOf(0xFF.toByte(), 0x2F, 0x00))
+    val trackBytes = track.toByteArray()
+    val out = ByteArrayOutputStream()
+    val data = DataOutputStream(out)
+    data.writeBytes("MThd")
+    data.writeInt(6)
+    data.writeShort(0)
+    data.writeShort(1)
+    data.writeShort(480)
+    data.writeBytes("MTrk")
+    data.writeInt(trackBytes.size)
+    data.write(trackBytes)
+    data.flush()
+    return out.toByteArray()
+}
+
+private fun writeMidiVariableLength(out: ByteArrayOutputStream, rawValue: Int) {
+    var value = rawValue.coerceAtLeast(0)
+    var buffer = value and 0x7F
+    while ((value shr 7) > 0) {
+        value = value shr 7
+        buffer = (buffer shl 8) or ((value and 0x7F) or 0x80)
+    }
+    while (true) {
+        out.write(buffer and 0xFF)
+        if ((buffer and 0x80) != 0) buffer = buffer shr 8 else break
     }
 }
