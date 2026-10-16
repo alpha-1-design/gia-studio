@@ -45,7 +45,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private data class RollNote(val midi: Int, val step: Int, val length: Int, val velocity: Float = 0.86f)
+internal data class RollNote(val midi: Int, val step: Int, val length: Int, val velocity: Float = 0.86f)
 private val rollSounds = listOf(SynthSound.EPIANO, SynthSound.PLUCK, SynthSound.LEAD, SynthSound.PAD, SynthSound.BASS, SynthSound.STRINGS, SynthSound.ORGAN, SynthSound.BELL)
 
 /** Touch-first piano roll backed by GIA's existing synth and arrangement renderer. */
@@ -655,7 +655,7 @@ private fun makeChordPattern(
 }
 
 /** Encode the current pattern as a standard single-track MIDI file (format 0). */
-private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int, swing: Float = 0f): ByteArray {
+internal fun encodeStandardMidi(notes: List<RollNote>, bpm: Int, swing: Float = 0f): ByteArray {
     data class MidiMessage(val tick: Int, val order: Int, val bytes: ByteArray)
     val messages = mutableListOf<MidiMessage>()
     val microsPerQuarter = (60_000_000 / bpm.coerceIn(30, 300))
@@ -709,10 +709,10 @@ private fun writeMidiVariableLength(out: ByteArrayOutputStream, rawValue: Int) {
 }
 
 
-private data class ImportedMidiPattern(val notes: List<RollNote>, val bpm: Int)
+internal data class ImportedMidiPattern(val notes: List<RollNote>, val bpm: Int)
 
 /** Read standard MIDI format 0/1 note events and quantize them to the 1/16 grid. */
-private fun decodeStandardMidi(bytes: ByteArray): ImportedMidiPattern {
+internal fun decodeStandardMidi(bytes: ByteArray): ImportedMidiPattern {
     class Reader(val data: ByteArray) {
         var p = 0
         fun u8(): Int {
