@@ -189,19 +189,19 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("CHORD BUILDER", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("I–V–vi–IV", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 7, 9, 5))
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 4, 5, 3))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a major-pop chord progression.")
             }
             Chip("ii–V–I", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(2, 7, 0))
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(1, 4, 0))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a ii–V–I progression.")
             }
             Chip("MINOR", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(9, 4, 5, 0), minorKey = true)
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 5, 2, 6), minorKey = true)
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a minor progression.")
             }
@@ -470,16 +470,15 @@ private fun makeChordPattern(
     degrees: List<Int>,
     minorKey: Boolean = false,
 ): List<RollNote> {
-    val majorScale = listOf(0, 2, 4, 5, 7, 9, 11)
-    val minorScale = listOf(0, 2, 3, 5, 7, 8, 10)
-    val scale = if (minorKey) minorScale else majorScale
-    val progression = degrees.take(bars.coerceIn(1, 4))
-    return progression.flatMapIndexed { bar, degree ->
-        val scaleIndex = (degree % 12)
-        val rootOffset = scaleIndex
-        val thirdOffset = if (minorKey || degree == 2 || degree == 9) 3 else 4
-        val chord = listOf(rootOffset, rootOffset + thirdOffset, rootOffset + 7)
-        chord.map { interval ->
+    val scale = if (minorKey) listOf(0, 2, 3, 5, 7, 8, 10) else listOf(0, 2, 4, 5, 7, 9, 11)
+    return degrees.take(bars.coerceIn(1, 4)).flatMapIndexed { bar, rawDegree ->
+        val degree = rawDegree.coerceIn(0, 6)
+        val intervals = listOf(
+            scale[degree],
+            scale[(degree + 2) % 7] + if (degree + 2 >= 7) 12 else 0,
+            scale[(degree + 4) % 7] + if (degree + 4 >= 7) 12 else 0,
+        )
+        intervals.map { interval ->
             RollNote(
                 midi = (rootMidi + interval).coerceIn(0, 127),
                 step = bar * 16,
