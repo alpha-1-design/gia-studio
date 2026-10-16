@@ -135,6 +135,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     val steps = bars * 16
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
+    val scalePitchClasses = remember(rootKey) { setOf(0, 2, 4, 5, 7, 9, 11).map { (it + rootKey) % 12 }.toSet() }
 
     LaunchedEffect(notes.toList(), sound, noteLength, velocity, bars, octave, cellWidth) {
         val saved = JSONArray()
@@ -422,7 +423,9 @@ fun PianoRollScreen(ctrl: StudioController) {
                                     .background(
                                         if (note != null && selectedKey == (midi to note.step)) Neo.Accent
                                         else if (note != null) Neo.Ok.copy(alpha = note.velocity.coerceIn(0.25f, 1f))
-                                        else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
+                                        else if (step % 4 == 0) Neo.PaperRaised
+                                        else if (pc in scalePitchClasses) Neo.PaperRaised.copy(alpha = 0.55f)
+                                        else Neo.Paper
                                     )
                                     .border(0.5.dp, Neo.Ink.copy(alpha = 0.22f))
                                     .clickable {
