@@ -254,13 +254,13 @@ fun PianoRollScreen(ctrl: StudioController) {
             }
             Chip("ii–V–I", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(1, 4, 0))
+                val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(1, 4, 0, 0))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a ii–V–I progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("MINOR", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 5, 2, 6), minorKey = true)
+                val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(0, 5, 2, 6), minorKey = true)
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a minor progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
