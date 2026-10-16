@@ -47,18 +47,31 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private val KIT_SOUNDS = listOf(
+private val KIT_ACOUSTIC = listOf(
     DrumSound.KICK, DrumSound.SNARE, DrumSound.CLAP, DrumSound.HAT,
     DrumSound.OPEN_HAT, DrumSound.TOM_LO, DrumSound.TOM_HI, DrumSound.RIM,
 )
+private val KIT_808 = listOf(
+    DrumSound.KICK_808, DrumSound.SNARE_808, DrumSound.CLAP, DrumSound.HAT_808,
+    DrumSound.OPEN_HAT, DrumSound.TOM_LO, DrumSound.COWBELL, DrumSound.SHAKER,
+)
+private val KIT_NAMES = listOf("Acoustic", "808")
+private val KITS = listOf(KIT_ACOUSTIC, KIT_808)
 
 private val SCALES = listOf(
     "Pentatonic" to MusicTheory.PENTATONIC,
     "Major" to MusicTheory.MAJOR,
     "Minor" to MusicTheory.MINOR,
+    "Dorian" to MusicTheory.DORIAN,
+    "Mixolydian" to MusicTheory.MIXOLYDIAN,
 )
 
 private val OCTAVES = listOf(-1, 0, 1)
+
+private val ALL_SYNTHS = listOf(
+    SynthSound.EPIANO, SynthSound.PLUCK, SynthSound.LEAD, SynthSound.PAD,
+    SynthSound.BASS, SynthSound.STRINGS, SynthSound.CHOIR, SynthSound.ORGAN, SynthSound.BELL,
+)
 
 private data class KeysCfg(
     val sound: SynthSound = SynthSound.EPIANO,
@@ -68,23 +81,29 @@ private data class KeysCfg(
 )
 
 private fun laneFor(sound: SynthSound): String = when (sound) {
-    SynthSound.EPIANO, SynthSound.PAD -> "Keys"
+    SynthSound.EPIANO, SynthSound.PAD, SynthSound.ORGAN, SynthSound.BELL -> "Keys"
     SynthSound.PLUCK, SynthSound.LEAD -> "Lead"
+    SynthSound.STRINGS, SynthSound.CHOIR -> "FX"
     SynthSound.BASS -> "Bass"
 }
 
 private fun colorFor(sound: SynthSound): Int = when (sound) {
-    SynthSound.EPIANO, SynthSound.PAD -> 2
+    SynthSound.EPIANO, SynthSound.PAD, SynthSound.ORGAN, SynthSound.BELL -> 2
     SynthSound.PLUCK, SynthSound.LEAD -> 4
+    SynthSound.STRINGS, SynthSound.CHOIR -> 5
     SynthSound.BASS -> 3
 }
 
 @Composable
 fun CreateScreen(ctrl: StudioController) {
     var isBeats by remember { mutableStateOf(true) }
-    var beatPat by remember { mutableStateOf(StepPattern(KIT_SOUNDS.size, 2)) }
+    var kitIdx by remember { mutableStateOf(0) }
+    val kitSounds = KITS[kitIdx]
+    var beatPat by remember(kitIdx) { mutableStateOf(StepPattern(kitSounds.size, 2)) }
     var bars by remember { mutableStateOf(2) }
     var keysCfg by remember { mutableStateOf(KeysCfg()) }
+    var swing by remember { mutableStateOf(0f) }
+    var humanize by remember { mutableStateOf(0f) }
 
     val keysMidis = remember(keysCfg) {
         val startMidi = (4 + OCTAVES[keysCfg.octIdx]) * 12 +
@@ -109,11 +128,11 @@ fun CreateScreen(ctrl: StudioController) {
         stepIdx = -1
     }
 
-    fun playRowSound(row: Int) {
+    fun playRowSound(row: Int, vel: Float = 0.9f) {
         val samples = if (isBeats) {
-            Synth.renderDrum(KIT_SOUNDS[row], ctrl.sampleRate, 0.9f)
+            Synth.renderDrum(kitSounds[row], ctrl.sampleRate, vel)
         } else {
-            Synth.renderNote(keysCfg.sound, keysMidis[row], ctrl.sampleRate, 0.4, 0.9f)
+            Synth.renderNote(keysCfg.sound, keysMidis[row], ctrl.sampleRate, 0.4, vel)
         }
         ctrl.playPreview(samples, loop = false)
     }
@@ -121,16 +140,17 @@ fun CreateScreen(ctrl: StudioController) {
     fun toggleCell(row: Int, col: Int) {
         val bar = col / STEPS_PER_BAR
         val step = col % STEPS_PER_BAR
-        val on = !pattern.get(row, bar, step)
-        pattern.set(row, bar, step, on)
-        if (on && !playing) playRowSound(row)
+        // Cycle velocity: off → full → med → soft → off
+        pattern.cycleVel(row, bar, step)
+        val vel = pattern.getVel(row, bar, step)
+        if (vel > 0.01f && !playing) playRowSound(row, vel)
     }
 
     fun currentSpec(label: String): StemSpec? {
         val events = if (isBeats) {
-            SongRender.drumEvents(KIT_SOUNDS, beatPat, bpm, bars)
+            SongRender.drumEvents(kitSounds, beatPat, bpm, bars, swing = swing, humanize = humanize)
         } else {
-            SongRender.noteEvents(keysCfg.sound, keysMidis, keyPat, bpm, bars)
+            SongRender.noteEvents(keysCfg.sound, keysMidis, keyPat, bpm, bars, swing = swing, humanize = humanize)
         }
         if (events.isEmpty()) return null
         val kind = if (isBeats) "Drums" else keysCfg.sound.label
@@ -203,14 +223,14 @@ fun CreateScreen(ctrl: StudioController) {
             if (!isBeats) {
                 SectionTitle("SOUND")
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SynthSound.entries.take(3).forEach { s ->
+                    ALL_SYNTHS.take(5).forEach { s ->
                         NeoChip(s.label, active = keysCfg.sound == s, onClick = {
                             keysCfg = keysCfg.copy(sound = s)
                         }, fontSize = 10.sp)
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SynthSound.entries.drop(3).forEach { s ->
+                    ALL_SYNTHS.drop(5).forEach { s ->
                         NeoChip(s.label, active = keysCfg.sound == s, onClick = {
                             keysCfg = keysCfg.copy(sound = s)
                         }, fontSize = 10.sp)
@@ -368,9 +388,49 @@ fun CreateScreen(ctrl: StudioController) {
 
             Spacer(Modifier.height(6.dp))
 
+            if (isBeats) {
+                SectionTitle("KIT")
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    KIT_NAMES.forEachIndexed { i, name ->
+                        NeoChip(name, active = kitIdx == i, onClick = {
+                            kitIdx = i
+                            stopPlay()
+                        })
+                    }
+                }
+            }
+
+            SectionTitle("GROOVE")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Swing", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Neo.Ink, modifier = Modifier.width(52.dp))
+                NeoLabeledSlider(
+                    label = "",
+                    value = swing,
+                    onValueChange = { swing = it },
+                    min = 0f,
+                    max = 1f,
+                    readout = "${(swing * 100).toInt()}%",
+                    help = "Delays the off-beats for a shuffle / swung feel. 0 = straight, ~50% = classic hip-hop shuffle.",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Human", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Neo.Ink, modifier = Modifier.width(52.dp))
+                NeoLabeledSlider(
+                    label = "",
+                    value = humanize,
+                    onValueChange = { humanize = it },
+                    min = 0f,
+                    max = 1f,
+                    readout = "${(humanize * 100).toInt()}%",
+                    help = "Adds tiny timing + velocity variations so the pattern feels played, not programmed.",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
             Text(
                 if (isBeats) {
-                    "DRUM KIT — ${KIT_SOUNDS.size} sounds · tap a row pad to hear one"
+                    "${KIT_NAMES[kitIdx]} kit · ${kitSounds.size} sounds · tap cells to cycle velocity (full → med → soft → off)"
                 } else {
                     "${SCALES[keysCfg.scaleIdx].first} on ${MusicTheory.letterName(keysCfg.rootIdx)} · ${keysMidis.size} pads · ${bars * 4} beats"
                 },
@@ -383,18 +443,18 @@ fun CreateScreen(ctrl: StudioController) {
                 pattern = pattern,
                 bars = bars,
                 rowLabels = if (isBeats) {
-                    KIT_SOUNDS.map { it.label }
+                    kitSounds.map { it.label }
                 } else {
                     keysMidis.map { MusicTheory.label(it) }
                 },
                 rowColors = if (isBeats) {
-                    KIT_SOUNDS.indices.map { Neo.trackColor(it) }
+                    kitSounds.indices.map { Neo.trackColor(it) }
                 } else {
                     keysMidis.indices.map { Neo.trackColor(it % 8) }
                 },
                 playingCol = if (playing) stepIdx else -1,
                 onCell = ::toggleCell,
-                onRowTap = ::playRowSound,
+                onRowTap = { row -> playRowSound(row) },
             )
         }
     }
@@ -491,7 +551,8 @@ private fun StepGrid(
                                 )
                             }
                             for (col in 0 until totalSteps) {
-                                val on = pattern.get(row, col / STEPS_PER_BAR, col % STEPS_PER_BAR)
+                                val vel = pattern.getVel(row, col / STEPS_PER_BAR, col % STEPS_PER_BAR)
+                                val on = vel > 0.01f
                                 val isPlayCol = playingCol == col
                                 Box(
                                     Modifier
@@ -499,7 +560,7 @@ private fun StepGrid(
                                         .fillMaxHeight()
                                         .background(
                                             when {
-                                                on -> rowColors[row]
+                                                on -> rowColors[row].copy(alpha = 0.35f + 0.65f * vel)
                                                 isPlayCol -> Neo.Accent
                                                 else -> Neo.Paper
                                             }

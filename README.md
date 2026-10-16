@@ -15,13 +15,11 @@ APIs (low-latency `AudioTrack`/`AudioRecord`). No web app, no external
 services, no dependencies to manage — every instrument is synthesized on your
 device from pure Kotlin DSP, so everything works offline with zero downloads.
 
-> Version 0.3.0 — the studio grows: record → **create** → arrange → clean →
-> mix → tune → export, plus a built-in demo song, **over-the-air updates**
-> (Settings → Check for updates) and the first slice of the **C++ audio core**
-> (Oboe + a real plugin ABI with a native test synth). The roadmap for deeper
-> DAW features (clip editing, velocity/swing, external plugin loading, AI
-> stem separation) is at the bottom of this file and inside the app under
-> **Help**.
+> Version 0.4.0 — production studio step: **clip editing + Undo/Redo**,
+> **velocity / swing / humanize**, **Acoustic + 808 kits**, nine synth voices
+> (including Strings, Choir, Organ, Bell), and **parametric EQ + compressor**.
+> Everything still runs offline on-device. Next: timeline drag handles,
+> pattern chaining, more FX, native audio path, stem export.
 
 ---
 
@@ -29,13 +27,13 @@ device from pure Kotlin DSP, so everything works offline with zero downloads.
 
 | Area | Features |
 | --- | --- |
-| **Create** | Step-grid **beat maker** (8-piece drum kit: kick, snare, clap, closed/open hats, toms, rim) and **melody grid** with built-in synth voices — E-Piano, Pluck, Lead, Pad, Bass — locked to a scale (pentatonic/major/minor, any root, 3 pitch ranges) so you can't hit a wrong note |
+| **Create** | Step-grid beat maker with **Acoustic + 808 kits**, velocity (tap to cycle), **swing & humanize**, and melody grid with 9 synth voices (E-Piano, Pluck, Lead, Pad, Bass, **Strings, Choir, Organ, Bell**) locked to scale (incl. Dorian/Mixolydian) |
 | **Built-in demo** | “Afterglow” — a finished 16-bar song (beat, bass, e-piano chords, pluck melody) generated from the synth bank; load it, play it, mute lanes, delete clips, sing over it, re-mix it |
-| **Timeline** | Up to 8 tracks, multiple clips per track along a shared time ruler, per-lane tap-to-seek, looping, BPM grid |
+| **Timeline** | Up to 8 tracks, multiple clips per track, **move / trim / split / duplicate**, Undo/Redo (40 steps), per-lane tap-to-seek, looping, BPM grid |
 | **Recording** | Microphone input with optional live monitoring, recording-level meter, per-track **auto-clean** on capture |
 | **Audio cleanup** | Offline DSP tools per clip: normalize, remove DC/rumble, adaptive noise gate (denoise), silence trim, fades |
 | **Mixer** | Per-track fader, pan, mute/solo/arm, master fader + peak limiter, input monitoring toggle |
-| **Effects** | Per-track insert chain: high-pass EQ, low-pass EQ, drive (tanh saturation), delay (feedback + mix), Schroeder reverb — identical live and in exports |
+| **Effects** | Per-track insert chain: HP/LP, **parametric EQ**, **soft-knee compressor**, drive, delay, reverb — identical live and in exports |
 | **Tuner** | Real autocorrelation pitch detection (60 Hz–1.4 kHz), note name + cents meter for tuning your voice/instrument |
 | **Export** | Offline mixdown through the same DSP graph → stereo WAV (16 or 24-bit, optional normalize), share sheet |
 | **Sessions** | JSON session files (arrangement + mixer + FX state) saved/opened from the app |
@@ -143,19 +141,19 @@ a guided first-run on your very first launch.
 
 - [x] C++ core started: Oboe + plugin ABI v1 + native test synth (v0.3)
 - [x] Over-the-air updates via GitHub Releases (v0.3)
-- [ ] Route the Create tab's instruments through the native core
-- [ ] External plugin loading: install AAP/CLAP/VST3-format instruments and
-      effects like a desktop DAW (built on the v0.3 plugin ABI)
-- [ ] Clip editing: move/crop/split/overlap on the timeline
-- [ ] More drum kits (808/909), voices (strings, choir) and one-shot pads
-- [ ] Velocity, accents, swing and humanize per pad; pattern chaining
-- [ ] MIDI + piano-roll editor with quantized notes and velocities
-- [ ] More FX: compressor, chorus, parametric EQ, de-esser
-- [ ] MP3 + FLAC export, project backup/export of sessions
-- [ ] Sub-20 ms round-trip latency targets with the Oboe core
-- [ ] On-device AI: stem separation (vocal removal from mixed recordings) and
-      auto-tune-style vocal pitch correction — bundled neural models, shipped
-      as a real milestone rather than a stub
+- [x] Clip editing + Undo/Redo (v0.4)
+- [x] Velocity, swing, humanize; Acoustic + 808 kits; 9 synth voices (v0.4)
+- [x] Parametric EQ, compressor, chorus (v0.4)
+- [x] Timeline drag move / edge trim (v0.4)
+- [x] Stem export + project package ZIP (v0.4)
+- [ ] Route Create instruments through the native/Oboe core
+- [ ] External plugin loading (AAP/CLAP/VST3)
+- [ ] Pattern chaining & scene launcher
+- [ ] Piano-roll / MIDI editor
+- [ ] De-esser, sidechain ducking
+- [ ] MP3 + FLAC export
+- [ ] Sub-20 ms latency target
+- [ ] On-device AI: stem separation + pitch correction (real models)
 
 ## License
 

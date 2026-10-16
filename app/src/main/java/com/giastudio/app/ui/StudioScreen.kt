@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -31,7 +32,11 @@ import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -306,12 +311,21 @@ private fun ClipBlock(
     ppsPx: Float,
     density: androidx.compose.ui.unit.Density,
 ) {
-    val xPx = (c.startSec * ppsPx).roundToInt()
-    val wPx = (c.lengthSec * ppsPx).roundToInt().coerceAtLeast(8)
+    // Live drag offsets so the block moves under the finger without waiting for model updates
+    var dragDxPx by remember(c.id) { mutableFloatStateOf(0f) }
+    var dragTrimStartPx by remember(c.id) { mutableFloatStateOf(0f) }
+    var dragTrimEndPx by remember(c.id) { mutableFloatStateOf(0f) }
+
+    val baseX = (c.startSec * ppsPx).toFloat()
+    val baseW = (c.lengthSec * ppsPx).toFloat().coerceAtLeast(8f)
+    val xPx = (baseX + dragDxPx + dragTrimStartPx).roundToInt()
+    val wPx = (baseW - dragTrimStartPx + dragTrimEndPx).roundToInt().coerceAtLeast(8)
     val selected = ctrl.selectedClipId == c.id
     val color = Neo.trackColor(t.color)
     val clipColor = if (selected) color.copy(alpha = 1f) else color.copy(alpha = 0.78f)
     val showLabel = wPx > 70
+    val handleW = 14.dp
+
     Box(
         Modifier
             .offset { IntOffset(xPx, 0) }
@@ -321,14 +335,90 @@ private fun ClipBlock(
             .shadow(3.dp, RectangleShape, spotColor = Neo.Ink, ambientColor = Neo.Ink)
             .background(clipColor)
             .border(2.dp, if (selected) Neo.Accent else Neo.Ink)
-            .clickable { ctrl.selectClip(t.id, c.id) }
-            .padding(horizontal = 5.dp),
+            .pointerInput(c.id, ppsPx) {
+                // Body drag = move clip
+                detectDragGestures(
+                    onDragStart = { ctrl.selectClip(t.id, c.id) },
+                    onDragEnd = {
+                        val deltaSec = dragDxPx / ppsPx
+                        if (kotlin.math.abs(deltaSec) > 0.005) {
+                            ctrl.moveClip(t.id, c.id, c.startSec + deltaSec)
+                        }
+                        dragDxPx = 0f
+                    },
+                    onDragCancel = { dragDxPx = 0f },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        dragDxPx += dragAmount.x
+                    },
+                )
+            },
         contentAlignment = Alignment.CenterStart,
     ) {
+        // Left trim handle
+        Box(
+            Modifier
+                .align(Alignment.CenterStart)
+                .width(handleW)
+                .fillMaxHeight()
+                .background(if (selected) Neo.Accent else Neo.Ink.copy(alpha = 0.45f))
+                .pointerInput(c.id, ppsPx) {
+                    detectDragGestures(
+                        onDragStart = { ctrl.selectClip(t.id, c.id) },
+                        onDragEnd = {
+                            val deltaSec = dragTrimStartPx / ppsPx
+                            if (kotlin.math.abs(deltaSec) > 0.005) {
+                                ctrl.trimClipStart(t.id, c.id, c.startSec + deltaSec)
+                            }
+                            dragTrimStartPx = 0f
+                        },
+                        onDragCancel = { dragTrimStartPx = 0f },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            // Don't let left edge pass the right edge
+                            val maxTrim = baseW - 8f - dragTrimEndPx
+                            dragTrimStartPx = (dragTrimStartPx + dragAmount.x).coerceIn(-baseX, maxTrim)
+                        },
+                    )
+                },
+        )
+        // Right trim handle
+        Box(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .width(handleW)
+                .fillMaxHeight()
+                .background(if (selected) Neo.Accent else Neo.Ink.copy(alpha = 0.45f))
+                .pointerInput(c.id, ppsPx) {
+                    detectDragGestures(
+                        onDragStart = { ctrl.selectClip(t.id, c.id) },
+                        onDragEnd = {
+                            val deltaSec = dragTrimEndPx / ppsPx
+                            if (kotlin.math.abs(deltaSec) > 0.005) {
+                                ctrl.trimClipEnd(t.id, c.id, c.endSec() + deltaSec)
+                            }
+                            dragTrimEndPx = 0f
+                        },
+                        onDragCancel = { dragTrimEndPx = 0f },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            val minW = 8f
+                            val maxExtend = 60f * ppsPx // allow growing up to ~60s visually
+                            dragTrimEndPx = (dragTrimEndPx + dragAmount.x)
+                                .coerceIn(-(baseW - minW - dragTrimStartPx), maxExtend)
+                        },
+                    )
+                },
+        )
         if (showLabel) {
-            Column {
+            Column(Modifier.padding(horizontal = 16.dp)) {
                 Text(c.name, color = Neo.Paper, fontSize = 9.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                Text("${c.lengthSec.toInt()}s", color = Neo.Paper.copy(alpha = 0.85f), fontSize = 8.sp, maxLines = 1)
+                Text(
+                    String.format("%.1fs", c.lengthSec),
+                    color = Neo.Paper.copy(alpha = 0.85f),
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                )
             }
         }
     }
@@ -372,6 +462,61 @@ private fun ClipInspector(ctrl: StudioController, t: Track, c: Clip, modifier: M
         )
         Spacer(Modifier.height(10.dp))
 
+        // ---- Edit tools ----
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("EDIT", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Spacer(Modifier.weight(1f))
+            Explain(
+                "Move, trim, split and duplicate without rewriting audio. " +
+                    "All edits are non-destructive and fully undoable.",
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            NeoButton("Split @ ▶", onClick = { ctrl.splitClipAtPlayhead(t.id, c.id) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+            NeoButton("Duplicate", onClick = { ctrl.duplicateClip(t.id, c.id) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            NeoButton("← 1/16", onClick = { ctrl.nudgeClip(t.id, c.id, -0.25) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+            NeoButton("→ 1/16", onClick = { ctrl.nudgeClip(t.id, c.id, 0.25) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+            NeoButton("← Beat", onClick = { ctrl.nudgeClip(t.id, c.id, -1.0) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+            NeoButton("→ Beat", onClick = { ctrl.nudgeClip(t.id, c.id, 1.0) }, modifier = Modifier.weight(1f), fontSize = 11.sp)
+        }
+        Spacer(Modifier.height(6.dp))
+        // Position + length sliders for precise placement / trim
+        NeoLabeledSlider(
+            label = "START",
+            value = c.startSec.toFloat(),
+            onValueChange = { s -> ctrl.moveClip(t.id, c.id, s.toDouble()) },
+            min = 0f,
+            max = (ctrl.project.arrangementEndSec() + 16.0).toFloat().coerceAtLeast(16f),
+            readout = fmtClock(c.startSec),
+            help = "Where this clip begins on the timeline.",
+        )
+        NeoLabeledSlider(
+            label = "TRIM START",
+            value = c.sourceOffsetSec.toFloat(),
+            onValueChange = { off ->
+                val delta = off.toDouble() - c.sourceOffsetSec
+                ctrl.trimClipStart(t.id, c.id, c.startSec + delta)
+            },
+            min = 0f,
+            max = (c.sourceOffsetSec + c.lengthSec).toFloat().coerceAtLeast(0.5f),
+            readout = String.format(Locale.US, "%.2fs", c.sourceOffsetSec),
+            help = "Crop the beginning of the audio without moving the clip’s right edge.",
+        )
+        NeoLabeledSlider(
+            label = "LENGTH",
+            value = c.lengthSec.toFloat(),
+            onValueChange = { len -> ctrl.trimClipEnd(t.id, c.id, c.startSec + len.toDouble()) },
+            min = 0.05f,
+            max = (c.lengthSec + 30.0).toFloat().coerceAtLeast(4f),
+            readout = String.format(Locale.US, "%.2fs", c.lengthSec),
+            help = "Trim the end of the region. Original audio is kept — you can always lengthen again.",
+        )
+
+        Spacer(Modifier.height(8.dp))
         val gainDb = (20.0 * log10(c.gain.toDouble().coerceAtLeast(1e-4))).toFloat()
         NeoLabeledSlider(
             label = "GAIN",
@@ -428,12 +573,14 @@ private fun ClipInspector(ctrl: StudioController, t: Track, c: Clip, modifier: M
         val activeFx = buildList {
             if (t.fx.hpOn) add("High-pass ${t.fx.hpHz} Hz")
             if (t.fx.lpOn) add("Low-pass ${t.fx.lpHz} Hz")
+            if (t.fx.eqOn) add("EQ ${t.fx.eqHz} Hz ${if (t.fx.eqGainDb >= 0) "+" else ""}${t.fx.eqGainDb.toInt()} dB")
+            if (t.fx.compOn) add("Comp ${t.fx.compRatio.toInt()}:1")
             if (t.fx.driveOn) add("Drive")
             if (t.fx.delayOn) add("Delay ${t.fx.delayMs.toInt()} ms")
             if (t.fx.reverbOn) add("Reverb")
         }
         Text(
-            if (activeFx.isEmpty()) "No effects here yet. Open the MIXER tab to add EQ, drive, delay or reverb."
+            if (activeFx.isEmpty()) "No effects yet. Open MIXER for EQ, compressor, drive, delay & reverb."
             else activeFx.joinToString("  •  "),
             fontSize = 10.sp,
             color = Neo.InkSoft,
@@ -485,7 +632,25 @@ private fun TransportBar(ctrl: StudioController, micGuard: (() -> Unit) -> Unit)
         )
         Spacer(Modifier.width(4.dp))
         NeoIconButton(Icons.Filled.Stop, onClick = { ctrl.stopTransport() })
+        Spacer(Modifier.width(6.dp))
+        NeoButton(
+            "UNDO",
+            onClick = { ctrl.undo() },
+            container = if (ctrl.canUndo) Neo.Paper else Neo.Disabled,
+            contentColor = Neo.Ink,
+            modifier = Modifier.width(64.dp),
+            fontSize = 11.sp,
+        )
         Spacer(Modifier.width(4.dp))
+        NeoButton(
+            "REDO",
+            onClick = { ctrl.redo() },
+            container = if (ctrl.canRedo) Neo.Paper else Neo.Disabled,
+            contentColor = Neo.Ink,
+            modifier = Modifier.width(64.dp),
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.width(6.dp))
         NeoChip(
             if (ctrl.loopEnabled) "LOOP" else "ONE",
             active = ctrl.loopEnabled,

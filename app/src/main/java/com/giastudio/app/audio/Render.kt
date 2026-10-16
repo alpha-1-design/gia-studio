@@ -25,16 +25,30 @@ data class SnapFx(
     val delayMix: Float,
     val reverbOn: Boolean,
     val reverbMix: Float,
+    val compOn: Boolean = false,
+    val compThreshDb: Float = -18f,
+    val compRatio: Float = 3f,
+    val compMakeupDb: Float = 3f,
+    val eqOn: Boolean = false,
+    val eqHz: Int = 1200,
+    val eqGainDb: Float = 0f,
+    val eqQ: Float = 1.2f,
+    val chorusOn: Boolean = false,
+    val chorusRate: Float = 0.6f,
+    val chorusDepth: Float = 4f,
+    val chorusMix: Float = 0.35f,
 )
 
 data class SnapClip(
     val id: String,
     val startFrame: Long,
     val lengthFrames: Int,
+    /** Offset into [samples] where this region begins (non-destructive crop). */
+    val sourceOffsetFrames: Int,
     val gain: Float,
     val fadeInFrames: Int,
     val fadeOutFrames: Int,
-    /** Mono PCM samples at the project sample rate. */
+    /** Full mono PCM buffer at the project sample rate (may be longer than lengthFrames). */
     val samples: FloatArray,
 )
 
@@ -72,13 +86,19 @@ fun buildSnap(
             .mapNotNull { c ->
                 val samples = sampleProvider(c.id) ?: return@mapNotNull null
                 if (samples.isEmpty()) return@mapNotNull null
+                val srcOff = (c.sourceOffsetSec * sampleRate).toInt().coerceIn(0, samples.size)
+                val available = samples.size - srcOff
+                if (available <= 0) return@mapNotNull null
+                val lenFrames = (c.lengthSec * sampleRate).toInt()
+                    .coerceIn(1, available)
                 SnapClip(
                     id = c.id,
                     startFrame = (c.startSec * sampleRate).toLong(),
-                    lengthFrames = samples.size,
+                    lengthFrames = lenFrames,
+                    sourceOffsetFrames = srcOff,
                     gain = c.gain,
-                    fadeInFrames = (c.fadeInSec * sampleRate).toInt(),
-                    fadeOutFrames = (c.fadeOutSec * sampleRate).toInt(),
+                    fadeInFrames = (c.fadeInSec * sampleRate).toInt().coerceAtMost(lenFrames),
+                    fadeOutFrames = (c.fadeOutSec * sampleRate).toInt().coerceAtMost(lenFrames),
                     samples = samples,
                 )
             }
@@ -95,6 +115,12 @@ fun buildSnap(
                 delayOn = t.fx.delayOn, delayMs = t.fx.delayMs,
                 delayFeedback = t.fx.delayFeedback, delayMix = t.fx.delayMix,
                 reverbOn = t.fx.reverbOn, reverbMix = t.fx.reverbMix,
+                compOn = t.fx.compOn, compThreshDb = t.fx.compThreshDb,
+                compRatio = t.fx.compRatio, compMakeupDb = t.fx.compMakeupDb,
+                eqOn = t.fx.eqOn, eqHz = t.fx.eqHz,
+                eqGainDb = t.fx.eqGainDb, eqQ = t.fx.eqQ,
+                chorusOn = t.fx.chorusOn, chorusRate = t.fx.chorusRate,
+                chorusDepth = t.fx.chorusDepth, chorusMix = t.fx.chorusMix,
             ),
             clips = clips,
         )
@@ -112,10 +138,16 @@ class TrackChain(sr: Int) {
     private val sampleRate = sr
     private val hp = BiquadFilter(BiquadFilter.Kind.HIGHPASS, 90.0, sr)
     private val lp = BiquadFilter(BiquadFilter.Kind.LOWPASS, 12000.0, sr)
+    private val eq = PeakingEq(sr, 1200.0, 1.2, 0.0)
+    private val comp = Compressor(sr)
+    private val chorus = Chorus(sr)
     private val delay = DelayLine(sr)
     private val reverb = Reverb(sr)
     private var lastHpHz = 90
     private var lastLpHz = 12000
+    private var lastEqHz = 1200
+    private var lastEqGain = 0f
+    private var lastEqQ = 1.2f
 
     /** Push live FX parameter changes into the chain without cutting tails. */
     fun sync(fx: SnapFx) {
@@ -127,6 +159,12 @@ class TrackChain(sr: Int) {
             lp.reconfigure(freqHz = fx.lpHz.toDouble())
             lastLpHz = fx.lpHz
         }
+        if (fx.eqHz != lastEqHz || fx.eqGainDb != lastEqGain || fx.eqQ != lastEqQ) {
+            eq.reconfigure(fx.eqHz.toDouble(), fx.eqQ.toDouble(), fx.eqGainDb.toDouble())
+            lastEqHz = fx.eqHz
+            lastEqGain = fx.eqGainDb
+            lastEqQ = fx.eqQ
+        }
     }
 
     /** Process `mono` in place through the enabled inserts. */
@@ -137,8 +175,27 @@ class TrackChain(sr: Int) {
         if (fx.lpOn) {
             for (i in 0 until n) mono[i] = lp.process(mono[i].toDouble()).toFloat()
         }
+        if (fx.eqOn && kotlin.math.abs(fx.eqGainDb) > 0.05f) {
+            for (i in 0 until n) mono[i] = eq.process(mono[i].toDouble()).toFloat()
+        }
+        if (fx.compOn) {
+            val thr = fx.compThreshDb.toDouble()
+            val ratio = fx.compRatio.toDouble()
+            val makeup = fx.compMakeupDb.toDouble()
+            for (i in 0 until n) {
+                mono[i] = comp.process(mono[i].toDouble(), thr, ratio, makeup).toFloat()
+            }
+        }
         if (fx.driveOn) {
             Drive.processBlock(mono, mono, n, fx.drive)
+        }
+        if (fx.chorusOn) {
+            val rate = fx.chorusRate.toDouble()
+            val depth = fx.chorusDepth.toDouble()
+            val mix = fx.chorusMix.toDouble()
+            for (i in 0 until n) {
+                mono[i] = chorus.process(mono[i].toDouble(), rate, depth, mix).toFloat()
+            }
         }
         if (fx.delayOn) {
             val delaySamples = (fx.delayMs / 1000.0 * sampleRate).toInt().coerceAtLeast(1)
@@ -215,6 +272,7 @@ fun renderBlock(
             val fadeIn = c.fadeInFrames
             val fadeOut = c.fadeOutFrames
             val src = c.samples
+            val srcBase = c.sourceOffsetFrames
             for (j in 0 until take) {
                 val s = readFrom + j
                 var env = 1f
@@ -222,7 +280,10 @@ fun renderBlock(
                 if (fadeOut > 0 && s >= len - fadeOut) {
                     env = minOf(env, (len - 1 - s).toFloat() / fadeOut)
                 }
-                scratch[i0 + j] += src[s] * g * env
+                val idx = srcBase + s
+                if (idx in src.indices) {
+                    scratch[i0 + j] += src[idx] * g * env
+                }
             }
         }
 

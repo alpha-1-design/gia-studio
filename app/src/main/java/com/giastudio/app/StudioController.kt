@@ -104,6 +104,16 @@ class StudioController(private val appContext: Context) {
     private var armTrackId = 0
     private var pendingDiscard = false
 
+    // ------------------------------------------------------------- Undo / Redo
+    private val undoStack = ArrayDeque<String>()
+    private val redoStack = ArrayDeque<String>()
+    private val maxHistory = 40
+
+    var canUndo by mutableStateOf(false)
+        private set
+    var canRedo by mutableStateOf(false)
+        private set
+
     val anyArmed: Boolean get() = armTrackId != 0
 
     /** The engine's native sample rate — Create tab renders previews at this. */
@@ -114,7 +124,9 @@ class StudioController(private val appContext: Context) {
     }
 
     fun setBpm(bpm: Int) {
+        recordHistory()
         project = project.copy(bpm = bpm.coerceIn(40, 300))
+        pushSnapshot()
         dirty = true
     }
 
@@ -160,9 +172,59 @@ class StudioController(private val appContext: Context) {
         toastMsg = null
     }
 
-    // ------------------------------------------------------------- snapshot
+    // ------------------------------------------------------------- snapshot + history
     private fun pushSnapshot() {
         engine.currentSnap = buildSnap(project, engine.sampleRate) { id -> sampleCache[id] }
+    }
+
+    /** Capture current project JSON onto the undo stack before a mutating edit. */
+    private fun recordHistory() {
+        val json = project.toJson().toString()
+        if (undoStack.lastOrNull() == json) return
+        undoStack.addLast(json)
+        while (undoStack.size > maxHistory) undoStack.removeFirst()
+        redoStack.clear()
+        canUndo = undoStack.isNotEmpty()
+        canRedo = false
+    }
+
+    fun undo() {
+        if (undoStack.isEmpty()) return
+        stopTransport()
+        val current = project.toJson().toString()
+        redoStack.addLast(current)
+        val prev = undoStack.removeLast()
+        try {
+            project = projectFromJson(JSONObject(prev))
+            // Keep sample cache; missing clips are skipped by buildSnap
+            selectedClipId = null
+            pushSnapshot()
+            dirty = true
+            canUndo = undoStack.isNotEmpty()
+            canRedo = redoStack.isNotEmpty()
+            toast("Undo")
+        } catch (e: Exception) {
+            toast("Undo failed: ${e.message}")
+        }
+    }
+
+    fun redo() {
+        if (redoStack.isEmpty()) return
+        stopTransport()
+        val current = project.toJson().toString()
+        undoStack.addLast(current)
+        val next = redoStack.removeLast()
+        try {
+            project = projectFromJson(JSONObject(next))
+            selectedClipId = null
+            pushSnapshot()
+            dirty = true
+            canUndo = undoStack.isNotEmpty()
+            canRedo = redoStack.isNotEmpty()
+            toast("Redo")
+        } catch (e: Exception) {
+            toast("Redo failed: ${e.message}")
+        }
     }
 
     // ------------------------------------------------------------- projects
@@ -174,6 +236,10 @@ class StudioController(private val appContext: Context) {
         selectedTrackId = 0
         armTrackId = 0
         playheadSec = 0.0
+        undoStack.clear()
+        redoStack.clear()
+        canUndo = false
+        canRedo = false
         pushSnapshot()
         dirty = false
     }
@@ -235,6 +301,10 @@ class StudioController(private val appContext: Context) {
                     if (t.clips.isEmpty()) idsToDrop.add(t.name)
                 }
                 project = loaded
+                undoStack.clear()
+                redoStack.clear()
+                canUndo = false
+                canRedo = false
                 pushSnapshot()
                 dirty = false
                 playheadSec = 0.0
@@ -370,16 +440,18 @@ class StudioController(private val appContext: Context) {
                 // Rewrite the WAV in the engine's sample rate so it loads fast
                 // and exactly matches the in-memory buffer.
                 writeMono16Wav(file, samples, engine.sampleRate)
-                sampleCache.clear() // stale decoded copies
                 main {
                     val t = trackById(trackId)
                     if (t == null) {
                         file.delete()
                         return@main
                     }
+                    recordHistory()
                     val takeNumber = t.clips.size + 1
+                    val clipId = "clip_${System.currentTimeMillis()}"
+                    sampleCache[clipId] = samples
                     val clip = Clip(
-                        id = "clip_${System.currentTimeMillis()}",
+                        id = clipId,
                         name = "${t.name} take $takeNumber",
                         fileName = file.name,
                         startSec = t.contentEndSec(),
@@ -404,6 +476,7 @@ class StudioController(private val appContext: Context) {
     private fun trackById(id: Int): Track? = project.tracks.firstOrNull { it.id == id }
 
     private fun mutateTrack(id: Int, change: (Track) -> Track) {
+        recordHistory()
         project = project.copy(tracks = project.tracks.map { if (it.id == id) change(it) else it }.toMutableList())
         pushSnapshot()
         dirty = true
@@ -434,12 +507,14 @@ class StudioController(private val appContext: Context) {
     }
 
     fun setMasterVolume(v: Float) {
+        recordHistory()
         project = project.copy(masterVolume = v.coerceIn(0f, 1.5f))
         pushSnapshot()
         dirty = true
     }
 
     fun toggleMasterLimiter() {
+        recordHistory()
         project = project.copy(masterLimiter = !project.masterLimiter)
         pushSnapshot()
         dirty = true
@@ -450,6 +525,7 @@ class StudioController(private val appContext: Context) {
             toast("GIA Studio allows up to ${MAX_TRACKS} tracks in this version.")
             return
         }
+        recordHistory()
         val n = project.tracks.size + 1
         val track = Track(
             id = project.nextTrackId(),
@@ -468,6 +544,7 @@ class StudioController(private val appContext: Context) {
             toast("A session needs at least one track.")
             return
         }
+        recordHistory()
         val t = trackById(id) ?: return
         t.clips.forEach { c ->
             File(recordingsDir, c.fileName).delete()
@@ -518,8 +595,17 @@ class StudioController(private val appContext: Context) {
     fun deleteClip(trackId: Int, clipId: String) {
         val t = trackById(trackId) ?: return
         val clip = t.clips.firstOrNull { it.id == clipId } ?: return
-        File(recordingsDir, clip.fileName).delete()
-        sampleCache.remove(clipId)
+        recordHistory()
+        // Only delete the file if no other clip still references it
+        val stillUsed = project.tracks.any { tr ->
+            tr.clips.any { c -> c.id != clipId && c.fileName == clip.fileName }
+        }
+        if (!stillUsed) {
+            File(recordingsDir, clip.fileName).delete()
+            sampleCache.remove(clipId)
+        } else {
+            sampleCache.remove(clipId)
+        }
         project = project.copy(
             tracks = project.tracks.map {
                 if (it.id == trackId) {
@@ -532,6 +618,136 @@ class StudioController(private val appContext: Context) {
         if (selectedClipId == clipId) selectedClipId = null
         pushSnapshot()
         dirty = true
+    }
+
+    /** Move a clip on the timeline (non-destructive). */
+    fun moveClip(trackId: Int, clipId: String, newStartSec: Double) {
+        mutateClip(trackId, clipId) {
+            it.copy(startSec = newStartSec.coerceAtLeast(0.0))
+        }
+    }
+
+    /**
+     * Non-destructive trim of the left edge.
+     * Positive deltaSec shortens from the start (moves start later + advances source offset).
+     */
+    fun trimClipStart(trackId: Int, clipId: String, newStartSec: Double) {
+        val t = trackById(trackId) ?: return
+        val c = t.clips.firstOrNull { it.id == clipId } ?: return
+        val end = c.endSec()
+        val clampedStart = newStartSec.coerceIn(0.0, end - 0.02)
+        val delta = clampedStart - c.startSec
+        if (kotlin.math.abs(delta) < 0.001) return
+        mutateClip(trackId, clipId) {
+            it.copy(
+                startSec = clampedStart,
+                lengthSec = end - clampedStart,
+                sourceOffsetSec = (it.sourceOffsetSec + delta).coerceAtLeast(0.0),
+                fadeInSec = it.fadeInSec.coerceAtMost(end - clampedStart),
+            )
+        }
+    }
+
+    /** Non-destructive trim of the right edge. */
+    fun trimClipEnd(trackId: Int, clipId: String, newEndSec: Double) {
+        val t = trackById(trackId) ?: return
+        val c = t.clips.firstOrNull { it.id == clipId } ?: return
+        val samples = sampleCache[clipId]
+        val maxLen = if (samples != null) {
+            (samples.size.toDouble() / sampleRate) - c.sourceOffsetSec
+        } else {
+            c.lengthSec + 60.0 // allow stretch if samples not cached yet
+        }
+        val clampedEnd = newEndSec.coerceIn(c.startSec + 0.02, c.startSec + maxLen)
+        mutateClip(trackId, clipId) {
+            it.copy(
+                lengthSec = clampedEnd - it.startSec,
+                fadeOutSec = it.fadeOutSec.coerceAtMost(clampedEnd - it.startSec),
+            )
+        }
+    }
+
+    /** Split the selected clip at the current playhead. Creates a second clip sharing the same file. */
+    fun splitClipAtPlayhead(trackId: Int, clipId: String) {
+        val t = trackById(trackId) ?: return
+        val c = t.clips.firstOrNull { it.id == clipId } ?: return
+        val splitAt = playheadSec
+        if (splitAt <= c.startSec + 0.02 || splitAt >= c.endSec() - 0.02) {
+            toast("Move the playhead inside the clip to split.")
+            return
+        }
+        if (t.clips.size >= MAX_CLIPS_PER_TRACK) {
+            toast("Track is full (${MAX_CLIPS_PER_TRACK} clips).")
+            return
+        }
+        recordHistory()
+        val leftLen = splitAt - c.startSec
+        val rightLen = c.endSec() - splitAt
+        val rightOffset = c.sourceOffsetSec + leftLen
+        val left = c.copy(
+            lengthSec = leftLen,
+            fadeOutSec = minOf(c.fadeOutSec, leftLen),
+        )
+        val right = c.copy(
+            id = "clip_${System.currentTimeMillis()}",
+            name = c.name + " (B)",
+            startSec = splitAt,
+            lengthSec = rightLen,
+            sourceOffsetSec = rightOffset,
+            fadeInSec = minOf(c.fadeInSec, rightLen),
+            fadeOutSec = minOf(c.fadeOutSec, rightLen),
+        )
+        // Share the sample buffer
+        sampleCache[c.id]?.let { sampleCache[right.id] = it }
+        project = project.copy(
+            tracks = project.tracks.map { tr ->
+                if (tr.id != trackId) tr
+                else tr.copy(
+                    clips = tr.clips.map { if (it.id == clipId) left else it }
+                        .toMutableList()
+                        .also { it.add(right) }
+                )
+            }.toMutableList()
+        )
+        selectedClipId = right.id
+        pushSnapshot()
+        dirty = true
+        toast("Split at ${fmtMinSec(splitAt)}")
+    }
+
+    /** Duplicate clip right after itself (shares the same audio file). */
+    fun duplicateClip(trackId: Int, clipId: String) {
+        val t = trackById(trackId) ?: return
+        val c = t.clips.firstOrNull { it.id == clipId } ?: return
+        if (t.clips.size >= MAX_CLIPS_PER_TRACK) {
+            toast("Track is full (${MAX_CLIPS_PER_TRACK} clips).")
+            return
+        }
+        recordHistory()
+        val copy = c.copy(
+            id = "clip_${System.currentTimeMillis()}",
+            name = c.name + " copy",
+            startSec = c.endSec(),
+        )
+        sampleCache[c.id]?.let { sampleCache[copy.id] = it }
+        project = project.copy(
+            tracks = project.tracks.map { tr ->
+                if (tr.id != trackId) tr
+                else tr.copy(clips = (tr.clips + copy).toMutableList())
+            }.toMutableList()
+        )
+        selectedClipId = copy.id
+        pushSnapshot()
+        dirty = true
+        toast("Duplicated “${c.name}”")
+    }
+
+    /** Nudge selected clip left/right by a musical amount (1/16 note or 1 beat). */
+    fun nudgeClip(trackId: Int, clipId: String, beats: Double) {
+        val t = trackById(trackId) ?: return
+        val c = t.clips.firstOrNull { it.id == clipId } ?: return
+        val secPerBeat = 60.0 / project.bpm
+        moveClip(trackId, clipId, c.startSec + beats * secPerBeat)
     }
 
     /** Runs an offline cleanup op on a clip (background; updates file+model). */
@@ -668,6 +884,7 @@ class StudioController(private val appContext: Context) {
             toast("That lane is full (${MAX_CLIPS_PER_TRACK} clips). Remove one on the Studio tab first.")
             return
         }
+        recordHistory()
         val stamp = System.currentTimeMillis()
         val fileName = "gen_${stamp}_${track.id}.wav"
         val file = File(recordingsDir, fileName)
@@ -758,6 +975,10 @@ class StudioController(private val appContext: Context) {
                         tracks = project.tracks.map { if (it.id == lane.id) updated else it }.toMutableList()
                     )
                 }
+                undoStack.clear()
+                redoStack.clear()
+                canUndo = false
+                canRedo = false
                 pushSnapshot()
                 playheadSec = 0.0
                 dirty = true
@@ -879,7 +1100,7 @@ class StudioController(private val appContext: Context) {
                     sampleProvider = { id -> sampleCache[id] },
                 ) { p -> main { progress = p } }
                 progress = 0f
-                main { shareFile(out) }
+                main { shareFile(out, "audio/wav", "Share “${project.name}” mix") }
             } catch (e: MixdownException) {
                 toast(e.message ?: "Export failed")
             } catch (e: Exception) {
@@ -888,18 +1109,110 @@ class StudioController(private val appContext: Context) {
         }
     }
 
-    private fun shareFile(file: File) {
+    /**
+     * Export each track as its own mono WAV (stems) into a zip, then share.
+     * Useful for taking the session into another DAW.
+     */
+    fun exportStemsAndShare() {
+        if (busy) return
+        busy("Rendering stems…", progressable = true) {
+            try {
+                val stamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
+                val dir = File(exportsDir, "stems_$stamp").apply {
+                    if (exists()) deleteRecursively()
+                    mkdirs()
+                }
+                val tracks = project.tracks.filter { it.clips.isNotEmpty() }
+                if (tracks.isEmpty()) {
+                    toast("Nothing to export — no clips on any track.")
+                    return@busy
+                }
+                tracks.forEachIndexed { i, t ->
+                    // Solo this track only for a clean stem
+                    val soloed = project.copy(
+                        tracks = project.tracks.map { tr ->
+                            tr.copy(soloed = tr.id == t.id, muted = false)
+                        }.toMutableList()
+                    )
+                    val safe = sanitize(t.name).ifEmpty { "Track${t.id}" }
+                    val out = File(dir, "${(i + 1).toString().padStart(2, '0')}_$safe.wav")
+                    Mixdown.renderToFile(
+                        project = soloed,
+                        target = out,
+                        sampleRate = engine.sampleRate,
+                        bitDepth = 24,
+                        normalize = false,
+                        sampleProvider = { id -> sampleCache[id] },
+                    ) { p ->
+                        main { progress = (i + p) / tracks.size }
+                    }
+                }
+                // Session JSON for reference
+                File(dir, "session.gia.json").writeText(project.toJson().toString(2))
+                val zip = File(exportsDir, "GIA_${sanitize(project.name)}_stems_$stamp.zip")
+                zipFolder(dir, zip)
+                dir.deleteRecursively()
+                progress = 0f
+                main { shareFile(zip, "application/zip", "Share stems — ${project.name}") }
+            } catch (e: Exception) {
+                toast("Stem export failed: ${e.message}")
+            }
+        }
+    }
+
+    /** Package session JSON + all referenced WAVs into a single .zip for backup. */
+    fun exportProjectPackage() {
+        if (busy) return
+        busy("Packaging project…") {
+            try {
+                val stamp = SimpleDateFormat("yyyyMMdd_HHmm", Locale.US).format(Date())
+                val dir = File(exportsDir, "pkg_$stamp").apply {
+                    if (exists()) deleteRecursively()
+                    mkdirs()
+                }
+                File(dir, "session.gia.json").writeText(project.toJson().toString(2))
+                val audioDir = File(dir, "recordings").apply { mkdirs() }
+                val seen = HashSet<String>()
+                for (t in project.tracks) {
+                    for (c in t.clips) {
+                        if (!seen.add(c.fileName)) continue
+                        val src = File(recordingsDir, c.fileName)
+                        if (src.exists()) src.copyTo(File(audioDir, c.fileName), overwrite = true)
+                    }
+                }
+                val zip = File(exportsDir, "GIA_${sanitize(project.name)}_project_$stamp.zip")
+                zipFolder(dir, zip)
+                dir.deleteRecursively()
+                main { shareFile(zip, "application/zip", "Share project package — ${project.name}") }
+            } catch (e: Exception) {
+                toast("Package failed: ${e.message}")
+            }
+        }
+    }
+
+    private fun zipFolder(sourceDir: File, zipFile: File) {
+        java.util.zip.ZipOutputStream(zipFile.outputStream().buffered()).use { zos ->
+            sourceDir.walkTopDown().filter { it.isFile }.forEach { file ->
+                val entryName = file.relativeTo(sourceDir).path.replace('\\', '/')
+                zos.putNextEntry(java.util.zip.ZipEntry(entryName))
+                file.inputStream().use { it.copyTo(zos) }
+                zos.closeEntry()
+            }
+        }
+    }
+
+    private fun shareFile(file: File, mime: String, chooserTitle: String) {
         try {
             val uri: Uri = FileProvider.getUriForFile(
                 appContext, appContext.packageName + ".fileprovider", file
             )
             val send = Intent(Intent.ACTION_SEND).apply {
-                type = "audio/wav"
+                type = mime
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_TITLE, project.name)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            val chooser = Intent.createChooser(send, "Share “${project.name}” mix")
+            val chooser = Intent.createChooser(send, chooserTitle)
             chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             appContext.startActivity(chooser)
         } catch (e: Exception) {

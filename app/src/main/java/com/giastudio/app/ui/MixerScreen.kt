@@ -53,7 +53,7 @@ fun MixerScreen(ctrl: StudioController) {
             NeoLabel("MIXER", color = Neo.Ink)
             Spacer(Modifier.width(10.dp))
             Text(
-                "Faders = loudness. PAN places the sound left/right. Strip FX: HP LP DRV DLY RV.",
+                "Faders = loudness. PAN places the sound left/right. Strip FX: HP LP EQ CMP DRV CHO DLY RV.",
                 fontSize = 10.sp,
                 color = Neo.InkSoft,
                 modifier = Modifier.weight(1f),
@@ -159,12 +159,14 @@ private fun TrackStrip(
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             FxDot("HP", t.fx.hpOn) { ctrl.setFx(t.id) { it.copy(hpOn = !it.hpOn) } }
             FxDot("LP", t.fx.lpOn) { ctrl.setFx(t.id) { it.copy(lpOn = !it.lpOn) } }
-            FxDot("DRV", t.fx.driveOn) { ctrl.setFx(t.id) { it.copy(driveOn = !it.driveOn) } }
+            FxDot("EQ", t.fx.eqOn) { ctrl.setFx(t.id) { it.copy(eqOn = !it.eqOn) } }
+            FxDot("CMP", t.fx.compOn) { ctrl.setFx(t.id) { it.copy(compOn = !it.compOn) } }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            FxDot("DRV", t.fx.driveOn) { ctrl.setFx(t.id) { it.copy(driveOn = !it.driveOn) } }
+            FxDot("CHO", t.fx.chorusOn) { ctrl.setFx(t.id) { it.copy(chorusOn = !it.chorusOn) } }
             FxDot("DLY", t.fx.delayOn) { ctrl.setFx(t.id) { it.copy(delayOn = !it.delayOn) } }
             FxDot("RV", t.fx.reverbOn) { ctrl.setFx(t.id) { it.copy(reverbOn = !it.reverbOn) } }
-            Spacer(Modifier.width(1.dp))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("PAN", fontSize = 7.sp, fontWeight = FontWeight.Black, color = Neo.InkSoft)
@@ -262,10 +264,10 @@ private fun FxPanel(ctrl: StudioController, t: Track) {
         }
         Spacer(Modifier.height(8.dp))
 
-        val anyOn = t.fx.hpOn || t.fx.lpOn || t.fx.driveOn || t.fx.delayOn || t.fx.reverbOn
+        val anyOn = t.fx.hpOn || t.fx.lpOn || t.fx.eqOn || t.fx.compOn || t.fx.driveOn || t.fx.chorusOn || t.fx.delayOn || t.fx.reverbOn
         if (!anyOn) {
             Text(
-                "Nothing switched on for this track.\nVocals: HP ~90 Hz clears mud. Bass/drums: a touch of DRV adds punch. DLY/RV add space.",
+                "Nothing switched on for this track.\nVocals: HP ~90 Hz + CMP for presence. Bass/drums: DRV + EQ for punch. DLY/RV for space.",
                 fontSize = 11.sp,
                 color = Neo.InkSoft,
                 fontWeight = FontWeight.Medium,
@@ -289,6 +291,62 @@ private fun FxPanel(ctrl: StudioController, t: Track) {
                 setHz = { hz -> ctrl.setFx(t.id) { it.copy(lpHz = hz) } },
             )
         }
+        SectionHeader("PARAMETRIC EQ", t.fx.eqOn) { ctrl.setFx(t.id) { it.copy(eqOn = !it.eqOn) } }
+        if (t.fx.eqOn) {
+            ExpoSlider(
+                label = "FREQ",
+                valueHz = t.fx.eqHz.toFloat(),
+                setHz = { hz -> ctrl.setFx(t.id) { it.copy(eqHz = hz) } },
+            )
+            NeoLabeledSlider(
+                label = "GAIN",
+                value = t.fx.eqGainDb,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(eqGainDb = v) } },
+                min = -12f,
+                max = 12f,
+                readout = "${t.fx.eqGainDb.roundToInt()} dB",
+                help = "Boost or cut around the chosen frequency. +3–6 dB on 2–4 kHz opens vocals.",
+            )
+            NeoLabeledSlider(
+                label = "Q",
+                value = t.fx.eqQ,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(eqQ = v) } },
+                min = 0.4f,
+                max = 6f,
+                readout = String.format("%.1f", t.fx.eqQ),
+                help = "Bandwidth. Lower = wider, higher = surgical.",
+            )
+        }
+        SectionHeader("COMPRESSOR", t.fx.compOn) { ctrl.setFx(t.id) { it.copy(compOn = !it.compOn) } }
+        if (t.fx.compOn) {
+            NeoLabeledSlider(
+                label = "THRESH",
+                value = t.fx.compThreshDb,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(compThreshDb = v) } },
+                min = -40f,
+                max = 0f,
+                readout = "${t.fx.compThreshDb.roundToInt()} dB",
+                help = "Level where compression starts. −18 dB is a solid vocal starting point.",
+            )
+            NeoLabeledSlider(
+                label = "RATIO",
+                value = t.fx.compRatio,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(compRatio = v) } },
+                min = 1.2f,
+                max = 12f,
+                readout = String.format("%.1f:1", t.fx.compRatio),
+                help = "How hard to squash. 2–4:1 for vocals, 4–8:1 for drums.",
+            )
+            NeoLabeledSlider(
+                label = "MAKEUP",
+                value = t.fx.compMakeupDb,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(compMakeupDb = v) } },
+                min = 0f,
+                max = 18f,
+                readout = "+${t.fx.compMakeupDb.roundToInt()} dB",
+                help = "Gain after compression so the track stays loud in the mix.",
+            )
+        }
         SectionHeader("DRIVE", t.fx.driveOn) { ctrl.setFx(t.id) { it.copy(driveOn = !it.driveOn) } }
         if (t.fx.driveOn) {
             NeoLabeledSlider(
@@ -298,6 +356,35 @@ private fun FxPanel(ctrl: StudioController, t: Track) {
                 max = 1f,
                 readout = "${(t.fx.drive * 100).roundToInt()}%",
                 help = "Analog-style saturation. A little adds body; more gets crunchy.",
+            )
+        }
+        SectionHeader("CHORUS", t.fx.chorusOn) { ctrl.setFx(t.id) { it.copy(chorusOn = !it.chorusOn) } }
+        if (t.fx.chorusOn) {
+            NeoLabeledSlider(
+                label = "RATE",
+                value = t.fx.chorusRate,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(chorusRate = v) } },
+                min = 0.1f,
+                max = 2.5f,
+                readout = String.format("%.1f Hz", t.fx.chorusRate),
+                help = "How fast the chorus modulates. ~0.5–1 Hz feels natural.",
+            )
+            NeoLabeledSlider(
+                label = "DEPTH",
+                value = t.fx.chorusDepth,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(chorusDepth = v) } },
+                min = 1f,
+                max = 10f,
+                readout = String.format("%.1f ms", t.fx.chorusDepth),
+                help = "Modulation depth. Higher = thicker, more seasick.",
+            )
+            NeoLabeledSlider(
+                label = "MIX",
+                value = t.fx.chorusMix,
+                onValueChange = { v -> ctrl.setFx(t.id) { it.copy(chorusMix = v) } },
+                max = 1f,
+                readout = "${(t.fx.chorusMix * 100).roundToInt()}%",
+                help = "Wet amount. Great on pads, strings, guitars, and soft vocals.",
             )
         }
         SectionHeader("DELAY", t.fx.delayOn) { ctrl.setFx(t.id) { it.copy(delayOn = !it.delayOn) } }

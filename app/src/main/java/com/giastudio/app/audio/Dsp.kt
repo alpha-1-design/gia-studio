@@ -294,3 +294,163 @@ fun panGains(pan: Float): Pair<Double, Double> {
 }
 
 fun clamp01(v: Float): Float = v.coerceIn(0f, 1f)
+
+// ---------------------------------------------------------------------------
+// Compressor — soft-knee feed-forward, musical defaults for vocals / drums
+// ---------------------------------------------------------------------------
+
+class Compressor(sampleRate: Int) {
+    private val attackCoef = exp(-1.0 / (sampleRate * 0.008))
+    private val releaseCoef = exp(-1.0 / (sampleRate * 0.18))
+    private var envelope = 0.0
+    private var gain = 1.0
+
+    /** thresholdDb typically -24..-6, ratio 1.5..8, makeup 0..12 dB */
+    fun process(x: Double, thresholdDb: Double, ratio: Double, makeupDb: Double): Double {
+        val a = abs(x)
+        envelope = if (a > envelope) {
+            a + (envelope - a) * attackCoef
+        } else {
+            a + (envelope - a) * releaseCoef
+        }
+        val envDb = if (envelope > 1e-8) 20.0 * kotlin.math.log10(envelope) else -120.0
+        val over = envDb - thresholdDb
+        val grDb = if (over <= 0.0) 0.0 else {
+            // Soft knee ~6 dB
+            val knee = 6.0
+            if (over < knee) {
+                val xk = over / knee
+                over * xk * 0.5 * (1.0 - 1.0 / ratio.coerceAtLeast(1.0))
+            } else {
+                over * (1.0 - 1.0 / ratio.coerceAtLeast(1.0))
+            }
+        }
+        val targetGain = exp((-grDb + makeupDb) * 0.11512925) // 20*log10 inverse
+        gain = if (targetGain < gain) {
+            targetGain + (gain - targetGain) * attackCoef
+        } else {
+            targetGain + (gain - targetGain) * releaseCoef
+        }
+        return x * gain
+    }
+
+    fun reset() {
+        envelope = 0.0
+        gain = 1.0
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Peaking EQ (RBJ cookbook) — one musical mid band + optional shelf helpers
+// ---------------------------------------------------------------------------
+
+class PeakingEq(
+    private val sampleRate: Int,
+    freqHz: Double = 1000.0,
+    private var q: Double = 1.0,
+    private var gainDb: Double = 0.0,
+) {
+    private var b0 = 1.0
+    private var b1 = 0.0
+    private var b2 = 0.0
+    private var a1 = 0.0
+    private var a2 = 0.0
+    private var x1 = 0.0
+    private var x2 = 0.0
+    private var y1 = 0.0
+    private var y2 = 0.0
+    private var lastFreq = freqHz
+
+    init {
+        design()
+    }
+
+    fun reconfigure(freqHz: Double = lastFreq, q: Double = this.q, gainDb: Double = this.gainDb) {
+        lastFreq = freqHz
+        this.q = q
+        this.gainDb = gainDb
+        design()
+    }
+
+    private fun design() {
+        val f = lastFreq.coerceIn(40.0, sampleRate * 0.45)
+        val A = exp(gainDb * 0.057762265) // 10^(dB/40)
+        val w0 = 2.0 * PI * f / sampleRate
+        val alpha = sin(w0) / (2.0 * q.coerceIn(0.3, 8.0))
+        val cosW = cos(w0)
+        val b0r = 1.0 + alpha * A
+        val b1r = -2.0 * cosW
+        val b2r = 1.0 - alpha * A
+        val a0r = 1.0 + alpha / A
+        val a1r = -2.0 * cosW
+        val a2r = 1.0 - alpha / A
+        val k = 1.0 / a0r
+        b0 = b0r * k
+        b1 = b1r * k
+        b2 = b2r * k
+        a1 = a1r * k
+        a2 = a2r * k
+    }
+
+    fun process(x: Double): Double {
+        val y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+        x2 = x1; x1 = x
+        y2 = y1; y1 = y
+        return y
+    }
+
+    fun reset() {
+        x1 = 0.0; x2 = 0.0; y1 = 0.0; y2 = 0.0
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Chorus — 3 modulated delay lines for width / lushness
+// ---------------------------------------------------------------------------
+
+class Chorus(sampleRate: Int) {
+    private val sr = sampleRate.toDouble()
+    private val maxDelay = (sampleRate * 0.04).toInt() + 8 // up to 40 ms
+    private val buf = DoubleArray(maxDelay)
+    private var write = 0
+    private var phase = 0.0
+
+    fun reset() {
+        buf.fill(0.0)
+        write = 0
+        phase = 0.0
+    }
+
+    /**
+     * @param rateHz LFO rate (~0.2–2 Hz)
+     * @param depthMs modulation depth in ms
+     * @param mix wet amount 0..1
+     */
+    fun process(x: Double, rateHz: Double, depthMs: Double, mix: Double): Double {
+        buf[write] = x
+        val baseDelay = 0.012 * sr // 12 ms centre
+        val depth = depthMs.coerceIn(0.5, 12.0) * 0.001 * sr
+        phase += 2.0 * PI * rateHz.coerceIn(0.05, 4.0) / sr
+        if (phase > 2.0 * PI) phase -= 2.0 * PI
+
+        fun tap(offset: Double): Double {
+            val d = (baseDelay + offset).coerceIn(1.0, (maxDelay - 2).toDouble())
+            val readPos = write - d
+            val i0 = Math.floor(readPos).toInt()
+            val frac = readPos - i0
+            val a = buf[((i0 % maxDelay) + maxDelay) % maxDelay]
+            val b = buf[(((i0 + 1) % maxDelay) + maxDelay) % maxDelay]
+            return a + (b - a) * frac
+        }
+
+        val wet = (
+            tap(depth * sin(phase)) +
+                tap(depth * sin(phase + 2.094)) + // +120°
+                tap(depth * sin(phase + 4.189))   // +240°
+            ) / 3.0
+        write = (write + 1) % maxDelay
+        val m = mix.coerceIn(0.0, 1.0)
+        return x * (1.0 - m) + wet * m
+    }
+}

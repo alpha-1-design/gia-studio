@@ -29,15 +29,38 @@ data class FxState(
     var delayMix: Float = 0.28f,
     var reverbOn: Boolean = false,
     var reverbMix: Float = 0.22f,
+    // Compressor
+    var compOn: Boolean = false,
+    var compThreshDb: Float = -18f,
+    var compRatio: Float = 3f,
+    var compMakeupDb: Float = 3f,
+    // Parametric mid EQ
+    var eqOn: Boolean = false,
+    var eqHz: Int = 1200,
+    var eqGainDb: Float = 0f,
+    var eqQ: Float = 1.2f,
+    // Chorus
+    var chorusOn: Boolean = false,
+    var chorusRate: Float = 0.6f,
+    var chorusDepth: Float = 4f,
+    var chorusMix: Float = 0.35f,
 )
 
-/** One audio region on a track. `fileName` is relative to recordings dir. */
+/**
+ * One audio region on a track.
+ *
+ * `fileName` is relative to the recordings dir.
+ * `sourceOffsetSec` + `lengthSec` define the non-destructive play region
+ * inside the WAV (so trim/split never rewrites the original file).
+ * `startSec` is where the region sits on the timeline.
+ */
 data class Clip(
     val id: String,
     var name: String,
     var fileName: String,
     var startSec: Double,
     var lengthSec: Double,
+    var sourceOffsetSec: Double = 0.0,
     var gain: Float = 1f,
     var fadeInSec: Double = 0.0,
     var fadeOutSec: Double = 0.0,
@@ -103,6 +126,12 @@ fun FxState.toJson(): JSONObject = JSONObject().apply {
     put("delayOn", delayOn); put("delayMs", delayMs.toDouble())
     put("delayFeedback", delayFeedback.toDouble()); put("delayMix", delayMix.toDouble())
     put("reverbOn", reverbOn); put("reverbMix", reverbMix.toDouble())
+    put("compOn", compOn); put("compThreshDb", compThreshDb.toDouble())
+    put("compRatio", compRatio.toDouble()); put("compMakeupDb", compMakeupDb.toDouble())
+    put("eqOn", eqOn); put("eqHz", eqHz)
+    put("eqGainDb", eqGainDb.toDouble()); put("eqQ", eqQ.toDouble())
+    put("chorusOn", chorusOn); put("chorusRate", chorusRate.toDouble())
+    put("chorusDepth", chorusDepth.toDouble()); put("chorusMix", chorusMix.toDouble())
 }
 
 fun fxFromJson(o: JSONObject): FxState = FxState(
@@ -118,6 +147,18 @@ fun fxFromJson(o: JSONObject): FxState = FxState(
     delayMix = o.optDouble("delayMix", 0.28).toFloat(),
     reverbOn = o.optBoolean("reverbOn", false),
     reverbMix = o.optDouble("reverbMix", 0.22).toFloat(),
+    compOn = o.optBoolean("compOn", false),
+    compThreshDb = o.optDouble("compThreshDb", -18.0).toFloat(),
+    compRatio = o.optDouble("compRatio", 3.0).toFloat(),
+    compMakeupDb = o.optDouble("compMakeupDb", 3.0).toFloat(),
+    eqOn = o.optBoolean("eqOn", false),
+    eqHz = o.optInt("eqHz", 1200),
+    eqGainDb = o.optDouble("eqGainDb", 0.0).toFloat(),
+    eqQ = o.optDouble("eqQ", 1.2).toFloat(),
+    chorusOn = o.optBoolean("chorusOn", false),
+    chorusRate = o.optDouble("chorusRate", 0.6).toFloat(),
+    chorusDepth = o.optDouble("chorusDepth", 4.0).toFloat(),
+    chorusMix = o.optDouble("chorusMix", 0.35).toFloat(),
 )
 
 fun Clip.toJson(): JSONObject = JSONObject().apply {
@@ -126,6 +167,7 @@ fun Clip.toJson(): JSONObject = JSONObject().apply {
     put("fileName", fileName)
     put("startSec", startSec)
     put("lengthSec", lengthSec)
+    put("sourceOffsetSec", sourceOffsetSec)
     put("gain", gain.toDouble())
     put("fadeInSec", fadeInSec)
     put("fadeOutSec", fadeOutSec)
@@ -137,6 +179,7 @@ fun clipFromJson(o: JSONObject): Clip = Clip(
     fileName = o.getString("fileName"),
     startSec = o.optDouble("startSec", 0.0),
     lengthSec = o.optDouble("lengthSec", 0.0),
+    sourceOffsetSec = o.optDouble("sourceOffsetSec", 0.0),
     gain = o.optDouble("gain", 1.0).toFloat(),
     fadeInSec = o.optDouble("fadeInSec", 0.0),
     fadeOutSec = o.optDouble("fadeOutSec", 0.0),

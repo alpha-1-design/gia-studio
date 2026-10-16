@@ -482,18 +482,21 @@ private fun ExportDialog(ctrl: StudioController, onDismiss: () -> Unit) {
     var normalize by remember { mutableStateOf(false) }
     val hasAudio = ctrl.project.tracks.any { it.clips.isNotEmpty() }
     Scrim(onDismiss) {
-        DialogTitle("Export mix as WAV")
+        DialogTitle("Export")
         Spacer(Modifier.height(6.dp))
         Text(
-            "GIA renders the whole arrangement through every fader and effect — exactly what you hear — into one stereo file you can share.",
+            "Everything is rendered through the same mixer and FX you hear — then handed to your phone’s share sheet.",
             fontSize = 11.sp,
             color = Neo.InkSoft,
         )
         Spacer(Modifier.height(10.dp))
         if (!hasAudio) {
-            Text("There's nothing to export yet — record or import a clip first.", fontSize = 12.sp, color = Neo.RecordDark, fontWeight = FontWeight.Black)
+            Text("Nothing to export yet — record, create, or import a clip first.", fontSize = 12.sp, color = Neo.RecordDark, fontWeight = FontWeight.Black)
             Spacer(Modifier.height(8.dp))
         }
+
+        Text("STEREO MIX (WAV)", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+        Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("BIT DEPTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.InkSoft)
             Spacer(Modifier.width(10.dp))
@@ -501,24 +504,60 @@ private fun ExportDialog(ctrl: StudioController, onDismiss: () -> Unit) {
             Spacer(Modifier.width(6.dp))
             NeoChip("24 (master)", active = bits == 24, onClick = { bits = 24 }, activeColor = Neo.Ink)
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             NeoChip("NORMALIZE", active = normalize, onClick = { normalize = !normalize }, activeColor = Neo.Ok)
             Spacer(Modifier.width(8.dp))
-            Text("Automatically make the loudest moment hit a strong level.", fontSize = 10.sp, color = Neo.InkSoft)
+            Text("Peak the loudest moment to a strong level.", fontSize = 10.sp, color = Neo.InkSoft)
         }
+        Spacer(Modifier.height(8.dp))
+        NeoButton(
+            "RENDER MIX & SHARE",
+            onClick = {
+                onDismiss()
+                ctrl.exportAndShare(bits, normalize)
+            },
+            enabled = hasAudio,
+            modifier = Modifier.fillMaxWidth(),
+        )
+
         Spacer(Modifier.height(12.dp))
+        Text("STEMS & BACKUP", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Stems = one WAV per track (zip). Project package = session JSON + all audio files.",
+            fontSize = 10.sp,
+            color = Neo.InkSoft,
+        )
+        Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NeoButton("CANCEL", onClick = onDismiss, container = Neo.PaperRaised, contentColor = Neo.Ink)
             NeoButton(
-                "RENDER & SHARE",
+                "STEMS ZIP",
                 onClick = {
                     onDismiss()
-                    ctrl.exportAndShare(bits, normalize)
+                    ctrl.exportStemsAndShare()
                 },
                 enabled = hasAudio,
+                container = Neo.PaperRaised,
+                contentColor = Neo.Ink,
+                modifier = Modifier.weight(1f),
+                fontSize = 12.sp,
+            )
+            NeoButton(
+                "PROJECT ZIP",
+                onClick = {
+                    onDismiss()
+                    ctrl.exportProjectPackage()
+                },
+                enabled = hasAudio,
+                container = Neo.PaperRaised,
+                contentColor = Neo.Ink,
+                modifier = Modifier.weight(1f),
+                fontSize = 12.sp,
             )
         }
+        Spacer(Modifier.height(10.dp))
+        NeoButton("CANCEL", onClick = onDismiss, container = Neo.PaperRaised, contentColor = Neo.Ink, modifier = Modifier.fillMaxWidth())
     }
 }
 

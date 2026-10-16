@@ -37,7 +37,7 @@ fun HelpScreen(ctrl: StudioController) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             NeoLabel("HELP & GUIDE", color = Neo.Ink)
             Spacer(Modifier.weight(1f))
-            Text("GIA Studio 0.3.0 — open source (GPLv3)", fontSize = 9.sp, color = Neo.InkSoft, fontWeight = FontWeight.Bold)
+            Text("GIA Studio 0.4.0 — open source (GPLv3)", fontSize = 9.sp, color = Neo.InkSoft, fontWeight = FontWeight.Bold)
         }
 
         Section("GIA Studio in 60 seconds") {
@@ -47,13 +47,24 @@ fun HelpScreen(ctrl: StudioController) {
             Bullet("Work stays on your device until you export: top bar → SAVE keeps the session, EXPORT makes a WAV you can share.")
         }
 
+        Section("Clip editing (v0.4)") {
+            Bullet("Tap any clip on the Studio timeline to open the inspector.")
+            Bullet("Split @ ▶ cuts the clip at the playhead into two independent regions that share the same audio file.")
+            Bullet("Duplicate places a copy right after the original.")
+            Bullet("Nudge by 1/16 or a full beat — musical moves that stay on the grid.")
+            Bullet("START / TRIM START / LENGTH sliders give precise non-destructive placement and cropping.")
+            Bullet("On the timeline: drag the middle of a clip to move it; drag the left/right edges to trim.")
+            Bullet("UNDO / REDO on the transport bar reverse almost every edit (up to 40 steps).")
+        }
+
         Section("Making music without playing anything (CREATE tab)") {
-            Bullet("DRUMS: 8 pads (kick, snare, clap, closed & open hat, toms, rim) over a 16-step grid. Tap pads on = a beat. Longer in BARS (1–8), faster/slower in TEMPO.")
-            Bullet("MELODY: same grid, but rows are notes inside a SCALE — choose Pentatonic/Major/Minor, a root note and a pitch range, and you literally cannot tap a wrong note.")
-            Bullet("Pick the SOUND per melody: E-Piano, Pluck, Lead, Pad or Bass — five built-in instruments, synthesized live.")
-            Bullet("▶ HEAR IT loops the pattern so you can judge it; tap any row pad to hear that sound alone; ＋ ADD TO SONG renders it to its own lane.")
-            Bullet("First instrument added starts a new lane at 0:00; adding another to the same lane chains a new section after it (snapped to the bar).")
-            Bullet("LOAD DEMO SONG replaces the session with “Afterglow” — a full 16-bar song you can play, mute lanes, delete clips, re-mix, and record over. It is the fastest way to learn.")
+            Bullet("DRUMS: two kits — Acoustic and 808 (with cowbell & shaker). 16-step grid, 1–8 bars.")
+            Bullet("Tap a step cell repeatedly to cycle velocity: full → medium → soft → off. Brighter cells = louder hits.")
+            Bullet("Swing delays the off-beats for a shuffle feel. Humanize adds tiny timing + velocity variation.")
+            Bullet("MELODY: notes locked to a scale (Pentatonic, Major, Minor, Dorian, Mixolydian) — you cannot hit a wrong note.")
+            Bullet("Nine voices: E-Piano, Pluck, Lead, Pad, Bass, Strings, Choir, Organ, Bell — all synthesized on-device.")
+            Bullet("▶ HEAR IT loops the pattern; ＋ ADD TO SONG renders it to its own lane.")
+            Bullet("LOAD DEMO SONG drops in “Afterglow” — play, mute lanes, re-mix, and record over it.")
         }
 
         Section("Keeping sounds separate (voice vs music)") {
@@ -84,11 +95,12 @@ fun HelpScreen(ctrl: StudioController) {
             Bullet("Fader = loudness of that track. PAN moves it left/right in the stereo image.")
             Bullet("M mute, S solo (only soloed tracks play), R arm for recording.")
             Bullet("Effects per track — tap a strip, then toggle stages:")
-            Bullet("• HIGH-PASS EQ cuts mud below X Hz (vocals ~80–120 Hz).", indent = true)
-            Bullet("• LOW-PASS EQ cuts harshness above X Hz.", indent = true)
-            Bullet("• DRIVE adds warm saturation/edge.", indent = true)
-            Bullet("• DELAY echoes the sound in time (great for vocals/guitar).", indent = true)
-            Bullet("• REVERB puts the track in a room — a little goes far.", indent = true)
+            Bullet("• HIGH-PASS / LOW-PASS — clear mud or harshness.", indent = true)
+            Bullet("• PARAMETRIC EQ — boost or cut around any frequency (presence, warmth, air).", indent = true)
+            Bullet("• COMPRESSOR — soft-knee dynamics control with makeup gain (vocals & drums).", indent = true)
+            Bullet("• DRIVE — warm saturation/edge.", indent = true)
+            Bullet("• DELAY — timed echoes.", indent = true)
+            Bullet("• REVERB — room / space.", indent = true)
             Bullet("MASTER: the final limiter catches peaks so your export never distorts. Leave it on.")
         }
 
@@ -102,8 +114,8 @@ fun HelpScreen(ctrl: StudioController) {
         Section("Sessions, saving and export") {
             Bullet("SAVE writes the session JSON into the app's private storage (it opens instantly next time).")
             Bullet("OPEN lists saved sessions. NEW starts fresh.")
-            Bullet("EXPORT renders the whole arrangement through your mixer settings into a stereo WAV — choose 16-bit for sharing, 24-bit for further editing/mastering.")
-            Bullet("Exports are shareable: WhatsApp, Drive, email — whatever your phone offers.")
+            Bullet("EXPORT → stereo mix WAV (16 or 24-bit), or STEMS ZIP (one file per track), or PROJECT ZIP (session + all audio for backup).")
+            Bullet("Everything goes through the share sheet: WhatsApp, Drive, email, Files…")
         }
 
         Section("Updating the app (Settings tab)") {
@@ -121,11 +133,10 @@ fun HelpScreen(ctrl: StudioController) {
         }
 
         Section("Open roadmap (honest notes)") {
-            Bullet("Version 0.2 added the built-in instrument engine (drum kit + 5 synth voices), the beat/melody pattern grids, and a full demo song. Every one of them renders to real clips you can edit.")
-            Bullet("Version 0.3 added over-the-air updates (Settings → Check for updates) and started the C++ core: Oboe + a real plugin ABI with the first native synthesizer, hosted in a real-time render loop.")
-            Bullet("Planned next: route the Create tab's instruments through the native core, clip move/crop/split on the timeline, more drums & voices (808 kit, strings, choir), velocity & swing, more FX (compressor, chorus, parametric EQ), MP3/FLAC export.")
-            Bullet("Planned engine work: external plugin loading — installing AAP/CLAP/VST3-format instruments & effects like a desktop DAW (the plugin ABI in 0.3 was designed for this).")
-            Bullet("Planned AI: on-device stem separation (vocal removal from a mixed recording) and auto-tune-style pitch correction — both need a bundled neural model, so they arrive as a real milestone, not a stub.")
+            Bullet("v0.4: clip editing + Undo/Redo, velocity/swing/humanize, Acoustic + 808 kits, nine synth voices, parametric EQ + compressor.")
+            Bullet("Next: timeline drag handles, pattern chaining, chorus/de-esser/sidechain, MP3/FLAC + stem export.")
+            Bullet("Engine: route Create instruments through the Oboe/C++ core; external AAP/CLAP/VST3 plugins.")
+            Bullet("AI (real models, not stubs): on-device stem separation and auto-tune-style pitch correction.")
             Bullet("GIA Studio is free software under the GNU GPL v3 — fork it, learn from it, build on it.")
         }
 
