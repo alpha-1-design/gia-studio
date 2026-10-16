@@ -28,12 +28,21 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK (accepts licenses, puts sdkmanager on PATH)
+      # Note: do NOT request the legacy "tools" package — it was removed from
+      # the Android SDK and causes setup-android to fail with exit code 1.
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: >
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
+            cmdline-tools;latest
 
       - name: Install NDK and CMake
         shell: bash
         run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
           yes | sdkmanager "ndk;26.1.10909125" "cmake;3.22.1" > /dev/null 2>&1 || \
             echo "sdkmanager install skipped — Gradle will resolve the NDK itself"
 
