@@ -361,6 +361,32 @@ fun PianoRollScreen(ctrl: StudioController) {
                 notes.addAll(generated)
                 ctrl.toast("Generated a melody in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
+            Chip("BASSLINE", false) {
+                val chordRoots = notes.groupBy { it.step }
+                    .filterValues { group -> group.size >= 3 && group.any { it.length >= 8 } }
+                    .mapValues { (_, group) -> group.minOf { it.midi } }
+                val scale = if (minorScale) listOf(0, 2, 3, 5, 7, 8, 10) else listOf(0, 2, 4, 5, 7, 9, 11)
+                val tonic = 60 + (octave - 4) * 12 + rootKey
+                val generated = buildList {
+                    repeat(bars) { bar ->
+                        val barStep = bar * 16
+                        val chordRoot = chordRoots[barStep] ?: (tonic + scale[0])
+                        listOf(0 to (chordRoot - 12), 8 to (chordRoot - 5)).forEach { (offset, midi) ->
+                            val step = barStep + offset
+                            val pitch = midi.coerceIn(0, 127)
+                            if (notes.none { it.midi == pitch && it.step == step }) {
+                                add(RollNote(pitch, step, 4, if (offset == 0) 0.82f else 0.66f))
+                            }
+                        }
+                    }
+                }
+                if (generated.isEmpty()) ctrl.toast("Bass notes already exist at those positions.")
+                else {
+                    pushUndo()
+                    notes.addAll(generated)
+                    ctrl.toast("Generated a bassline.")
+                }
+            }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("PATTERN SLOTS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
