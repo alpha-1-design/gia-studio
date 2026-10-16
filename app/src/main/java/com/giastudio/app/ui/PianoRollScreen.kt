@@ -219,11 +219,13 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
                                         }
                                     }
-                                    .pointerInput(note?.step, midi, step, cellWidth) {
+                                    .pointerInput(midi, step, cellWidth) {
                                         val startingNote = note
                                         if (startingNote != null) {
                                             var dragX = 0f
                                             var dragY = 0f
+                                            var currentMidi = startingNote.midi
+                                            var currentStep = startingNote.step
                                             detectDragGestures(
                                                 onDragStart = { selectedKey = startingNote.midi to startingNote.step },
                                                 onDrag = { change, amount ->
@@ -233,13 +235,15 @@ fun PianoRollScreen(ctrl: StudioController) {
                                                     val stepDelta = (dragX / with(density) { cellWidth.dp.toPx() }).toInt()
                                                     val pitchDelta = -(dragY / with(density) { 29.dp.toPx() }).toInt()
                                                     if (stepDelta != 0 || pitchDelta != 0) {
-                                                        val idx = notes.indexOfFirst { it.midi == startingNote.midi && it.step == startingNote.step }
+                                                        val idx = notes.indexOfFirst { it.midi == currentMidi && it.step == currentStep }
                                                         if (idx >= 0) {
                                                             val moved = startingNote.copy(
                                                                 step = (startingNote.step + stepDelta).coerceIn(0, 63),
                                                                 midi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
                                                             )
                                                             notes[idx] = moved
+                                                            currentMidi = moved.midi
+                                                            currentStep = moved.step
                                                             selectedKey = moved.midi to moved.step
                                                         }
                                                     }
