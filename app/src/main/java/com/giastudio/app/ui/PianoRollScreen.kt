@@ -160,6 +160,9 @@ fun PianoRollScreen(ctrl: StudioController) {
             .apply()
     }
 
+    fun overlapsAtPitch(midi: Int, step: Int, length: Int): Boolean =
+        notes.any { it.midi == midi && step < it.step + it.length && it.step < step + length }
+
     fun savePattern(slot: String) {
         if (notes.isEmpty()) {
             ctrl.toast("Add notes before saving a pattern.")
@@ -291,7 +294,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                 pushUndo()
                 minorScale = false
                 val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(0, 4, 5, 3))
-                notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
+                notes.addAll(generated.filterNot { candidate -> overlapsAtPitch(candidate.midi, candidate.step, candidate.length) })
                 ctrl.toast("Added a major-pop progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("ii–V–I", false) {
@@ -345,14 +348,14 @@ fun PianoRollScreen(ctrl: StudioController) {
             Chip("GENERATE", false) {
                 pushUndo()
                 val scale = if (minorScale) listOf(0, 2, 3, 5, 7, 8, 10) else listOf(0, 2, 4, 5, 7, 9, 11)
-                val rootMidi = 60 + (octave - 4) * 12 + rootKey - 12
+                val rootMidi = 60 + (octave - 4) * 12 + rootKey
                 val degrees = listOf(0, 2, 4, 2, 5, 4, 2, 1)
                 val generated = buildList {
                     repeat(bars) { bar ->
                         degrees.forEachIndexed { index, degree ->
                             val midi = (rootMidi + scale[degree]).coerceIn(0, 127)
                             val step = bar * 16 + index * 2
-                            if (notes.none { it.midi == midi && it.step == step }) {
+                            if (!overlapsAtPitch(midi, step, 2)) {
                                 add(RollNote(midi, step, 2, listOf(0.78f, 0.58f, 0.7f, 0.62f)[index % 4]))
                             }
                         }
@@ -374,7 +377,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                         listOf(0 to (chordRoot - 12), 8 to (chordRoot - 5)).forEach { (offset, midi) ->
                             val step = barStep + offset
                             val pitch = midi.coerceIn(0, 127)
-                            if (notes.none { it.midi == pitch && it.step == step }) {
+                            if (!overlapsAtPitch(pitch, step, 4)) {
                                 add(RollNote(pitch, step, 4, if (offset == 0) 0.82f else 0.66f))
                             }
                         }
