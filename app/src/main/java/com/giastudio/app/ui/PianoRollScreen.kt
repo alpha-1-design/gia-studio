@@ -89,6 +89,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     }
     var noteLength by remember { mutableIntStateOf(prefs.getInt("noteLength", 2).coerceIn(1, 8)) }
     var velocity by remember { mutableFloatStateOf(prefs.getFloat("velocity", 0.86f).coerceIn(0.05f, 1f)) }
+    var swing by remember { mutableFloatStateOf(prefs.getFloat("swing", 0f).coerceIn(0f, 0.6f)) }
     var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var rootKey by remember { mutableIntStateOf(prefs.getInt("rootKey", 0).coerceIn(0, 11)) }
@@ -147,6 +148,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             .putString("sound", sound.name)
             .putInt("noteLength", noteLength)
             .putFloat("velocity", velocity)
+            .putFloat("swing", swing)
             .putInt("bars", bars)
             .putInt("octave", octave)
             .putInt("rootKey", rootKey)
@@ -208,7 +210,8 @@ fun PianoRollScreen(ctrl: StudioController) {
     fun spec(label: String): StemSpec? {
         if (notes.isEmpty()) return null
         val events = notes.map { n ->
-            MusicEvent.Note(sound, n.midi, n.step * SongRender.stepDurSec(bpm), n.length * SongRender.stepDurSec(bpm) * 0.96, n.velocity)
+            val swingShift = if (n.step % 4 == 2) swing.toDouble() else 0.0
+            MusicEvent.Note(sound, n.midi, (n.step.toDouble() + swingShift) * SongRender.stepDurSec(bpm), n.length * SongRender.stepDurSec(bpm) * 0.96, n.velocity)
         }
         val lane = when (sound) {
             SynthSound.BASS -> "Bass"
@@ -286,6 +289,16 @@ fun PianoRollScreen(ctrl: StudioController) {
                     ctrl.toast("Turned chords into an arpeggio.")
                 }
             }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("SWING", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Slider(
+                value = swing,
+                onValueChange = { swing = it },
+                valueRange = 0f..0.6f,
+                modifier = Modifier.weight(1f),
+            )
+            Text("${(swing * 100).toInt()}%", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Neo.Ink)
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("PATTERN SLOTS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
@@ -507,7 +520,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Box(Modifier.weight(1f).background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable {
                 if (notes.isEmpty()) ctrl.toast("Add notes before exporting MIDI.")
                 else {
-                    pendingMidiExport = encodeStandardMidi(notes.toList(), bpm)
+                    pendingMidiExport = encodeStandardMidi(notes.toList(), bpm, swing)
                     exportMidiLauncher.launch("GIA-Pattern.mid")
                 }
             }.padding(12.dp), contentAlignment = Alignment.Center) {
@@ -580,15 +593,16 @@ private fun makeChordPattern(
 }
 
 /** Encode the current pattern as a standard single-track MIDI file (format 0). */
-private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int): ByteArray {
+private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int, swing: Float = 0f): ByteArray {
     data class MidiMessage(val tick: Int, val order: Int, val bytes: ByteArray)
     val messages = mutableListOf<MidiMessage>()
     val microsPerQuarter = (60_000_000 / bpm.coerceIn(30, 300))
     messages += MidiMessage(0, -2, byteArrayOf(0xFF.toByte(), 0x58, 0x04, 0x04, 0x02, 0x18, 0x08))
     messages += MidiMessage(0, -1, byteArrayOf(0xFF.toByte(), 0x51, 0x03, (microsPerQuarter shr 16).toByte(), (microsPerQuarter shr 8).toByte(), microsPerQuarter.toByte()))
     notes.forEach { n ->
-        val start = n.step * 120
-        val end = (n.step + n.length) * 120
+        val swingTicks = if (n.step % 4 == 2) (120 * swing.coerceIn(0f, 0.6f)).toInt() else 0
+        val start = n.step * 120 + swingTicks
+        val end = (n.step + n.length) * 120 + swingTicks
         val pitch = n.midi.coerceIn(0, 127).toByte()
         val vel = (n.velocity * 127).toInt().coerceIn(1, 127).toByte()
         messages += MidiMessage(start, 1, byteArrayOf(0x90.toByte(), pitch, vel))
