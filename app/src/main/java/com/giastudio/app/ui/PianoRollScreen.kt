@@ -93,6 +93,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
+    var velocityUndoSaved by remember { mutableStateOf(false) }
     var pendingMidiExport by remember { mutableStateOf<ByteArray?>(null) }
     val importMidiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
@@ -186,6 +187,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("VEL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(0.45f to "SOFT", 0.70f to "MID", 0.95f to "HARD").forEach { (v, label) ->
                 Chip(label, velocity == v) {
+                    if (selectedNote != null) pushUndo()
                     velocity = v
                     selectedNote?.let { n ->
                         val i = notes.indexOf(n)
@@ -254,12 +256,17 @@ fun PianoRollScreen(ctrl: StudioController) {
             Slider(
                 value = selectedNote?.velocity ?: velocity,
                 onValueChange = { v ->
+                    if (!velocityUndoSaved && selectedNote != null) {
+                        pushUndo()
+                        velocityUndoSaved = true
+                    }
                     velocity = v
                     selectedNote?.let { n ->
                         val idx = notes.indexOfFirst { it.midi == n.midi && it.step == n.step }
                         if (idx >= 0) notes[idx] = n.copy(velocity = v)
                     }
                 },
+                onValueChangeFinished = { velocityUndoSaved = false },
                 enabled = selectedNote != null,
                 valueRange = 0.05f..1f,
                 modifier = Modifier.weight(1f)
