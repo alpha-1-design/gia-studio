@@ -186,6 +186,27 @@ fun PianoRollScreen(ctrl: StudioController) {
             listOf(1, 2, 4).forEach { b -> Chip(b.toString(), bars == b) { bars = b } }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("CHORD BUILDER", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Chip("I–V–vi–IV", false) {
+                pushUndo()
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 7, 9, 5))
+                notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
+                ctrl.toast("Added a major-pop chord progression.")
+            }
+            Chip("ii–V–I", false) {
+                pushUndo()
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(2, 7, 0))
+                notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
+                ctrl.toast("Added a ii–V–I progression.")
+            }
+            Chip("MINOR", false) {
+                pushUndo()
+                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(9, 4, 5, 0), minorKey = true)
+                notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
+                ctrl.toast("Added a minor progression.")
+            }
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("LENGTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(1 to "1/16", 2 to "1/8", 4 to "1/4", 8 to "1/2").forEach { (n, label) -> Chip(label, noteLength == n) { noteLength = n } }
             Text("VEL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
@@ -440,6 +461,34 @@ private fun Chip(label: String, active: Boolean, onClick: () -> Unit) {
     }
 }
 
+
+
+/** Generate triad voicings as MIDI notes, one chord per bar. */
+private fun makeChordPattern(
+    rootMidi: Int,
+    bars: Int,
+    degrees: List<Int>,
+    minorKey: Boolean = false,
+): List<RollNote> {
+    val majorScale = listOf(0, 2, 4, 5, 7, 9, 11)
+    val minorScale = listOf(0, 2, 3, 5, 7, 8, 10)
+    val scale = if (minorKey) minorScale else majorScale
+    val progression = degrees.take(bars.coerceIn(1, 4))
+    return progression.flatMapIndexed { bar, degree ->
+        val scaleIndex = (degree % 12)
+        val rootOffset = scaleIndex
+        val thirdOffset = if (minorKey || degree == 2 || degree == 9) 3 else 4
+        val chord = listOf(rootOffset, rootOffset + thirdOffset, rootOffset + 7)
+        chord.map { interval ->
+            RollNote(
+                midi = (rootMidi + interval).coerceIn(0, 127),
+                step = bar * 16,
+                length = 16,
+                velocity = 0.72f,
+            )
+        }
+    }
+}
 
 /** Encode the current pattern as a standard single-track MIDI file (format 0). */
 private fun encodeStandardMidi(notes: List<RollNote>, bpm: Int): ByteArray {
