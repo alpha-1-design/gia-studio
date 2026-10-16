@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.giastudio.app.StudioController
+import com.giastudio.app.model.PianoRollNote
+import com.giastudio.app.model.PianoRollPattern
 import com.giastudio.app.audio.Notes
 import com.giastudio.app.music.MusicEvent
 import com.giastudio.app.music.SongRender
@@ -172,17 +174,40 @@ fun PianoRollScreen(ctrl: StudioController) {
             })
         }
         prefs.edit().putString("pattern_$slot", payload.toString()).apply()
-        ctrl.toast("Saved pattern $slot.")
+        ctrl.savePianoRollPattern(
+            PianoRollPattern(
+                id = "piano_roll_slot_$slot",
+                name = "Piano Roll $slot",
+                bpm = bpm,
+                instrument = sound.name,
+                rootKey = rootKey,
+                minorScale = minorScale,
+                swing = swing,
+                notes = notes.map { PianoRollNote(it.midi, it.step, it.length, it.velocity) }.toMutableList(),
+            )
+        )
     }
 
     fun loadPattern(slot: String) {
+        val projectPattern = ctrl.project.pianoRollPatterns.firstOrNull { it.id == "piano_roll_slot_$slot" }
         val raw = prefs.getString("pattern_$slot", null)
-        if (raw == null) {
+        if (projectPattern == null && raw == null) {
             ctrl.toast("Pattern $slot is empty. Save a pattern there first.")
             return
         }
         runCatching {
-            val payload = JSONObject(raw)
+            val payload = if (projectPattern != null) JSONObject().apply {
+                put("bpm", projectPattern.bpm)
+                put("sound", projectPattern.instrument)
+                put("rootKey", projectPattern.rootKey)
+                put("minorScale", projectPattern.minorScale)
+                put("swing", projectPattern.swing.toDouble())
+                put("notes", JSONArray().apply {
+                    projectPattern.notes.forEach { n ->
+                        put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
+                    }
+                })
+            } else JSONObject(raw!!)
             val savedNotes = payload.optJSONArray("notes") ?: JSONArray()
             val decoded = buildList {
                 for (i in 0 until savedNotes.length()) {
