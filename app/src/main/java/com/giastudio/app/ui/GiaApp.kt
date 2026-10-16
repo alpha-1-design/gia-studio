@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -56,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -126,18 +128,36 @@ fun GiaApp(ctrl: StudioController) {
     }
 
     Box(Modifier.fillMaxSize().background(Neo.Paper)) {
-        Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).fillMaxSize()) {
-            TopBar(ctrl, onAction = { d -> dialog = d })
-            Row(Modifier.weight(1f).fillMaxWidth()) {
-                NavRail(tab, onSelect = { tab = it })
-                when (tab) {
-                    Tab.STUDIO -> StudioScreen(ctrl, micGuard = ::micGuard)
-                    Tab.CREATE -> CreateScreen(ctrl)
-                    Tab.PIANO -> PianoRollScreen(ctrl)
-                    Tab.MIXER -> MixerScreen(ctrl)
-                    Tab.TUNER -> TunerScreen(ctrl, micGuard = ::micGuard)
-                    Tab.SETTINGS -> SettingsScreen(ctrl)
-                    Tab.HELP -> HelpScreen(ctrl)
+        BoxWithConstraints(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).fillMaxSize()) {
+            val phoneLayout = maxWidth < 600.dp
+            Column(Modifier.fillMaxSize()) {
+                TopBar(ctrl, onAction = { d -> dialog = d })
+                if (phoneLayout) {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        when (tab) {
+                            Tab.STUDIO -> StudioScreen(ctrl, micGuard = ::micGuard)
+                            Tab.CREATE -> CreateScreen(ctrl)
+                            Tab.PIANO -> PianoRollScreen(ctrl)
+                            Tab.MIXER -> MixerScreen(ctrl)
+                            Tab.TUNER -> TunerScreen(ctrl, micGuard = ::micGuard)
+                            Tab.SETTINGS -> SettingsScreen(ctrl)
+                            Tab.HELP -> HelpScreen(ctrl)
+                        }
+                    }
+                    PhoneNavBar(tab, onSelect = { tab = it })
+                } else {
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        NavRail(tab, onSelect = { tab = it })
+                        when (tab) {
+                            Tab.STUDIO -> StudioScreen(ctrl, micGuard = ::micGuard)
+                            Tab.CREATE -> CreateScreen(ctrl)
+                            Tab.PIANO -> PianoRollScreen(ctrl)
+                            Tab.MIXER -> MixerScreen(ctrl)
+                            Tab.TUNER -> TunerScreen(ctrl, micGuard = ::micGuard)
+                            Tab.SETTINGS -> SettingsScreen(ctrl)
+                            Tab.HELP -> HelpScreen(ctrl)
+                        }
+                    }
                 }
             }
         }
@@ -266,6 +286,30 @@ private fun TopIcon(icon: ImageVector, label: String, onClick: () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
+@Composable
+private fun PhoneNavBar(tab: Tab, onSelect: (Tab) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().background(Neo.Ink).horizontalScroll(rememberScrollState()).padding(horizontal = 4.dp, vertical = 5.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Tab.entries.forEach { item ->
+            val selected = item == tab
+            Column(
+                Modifier.width(66.dp).heightIn(min = 48.dp)
+                    .background(if (selected) Neo.Accent else Neo.Ink)
+                    .border(1.dp, if (selected) Neo.Accent else Neo.Paper.copy(alpha = 0.25f))
+                    .clickable { onSelect(item) }.padding(horizontal = 3.dp, vertical = 5.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(item.icon, contentDescription = item.label, tint = if (selected) Neo.Ink else Neo.Paper.copy(alpha = 0.88f), modifier = Modifier.size(18.dp))
+                Text(item.label, color = if (selected) Neo.Ink else Neo.Paper.copy(alpha = 0.88f), fontSize = 9.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
+        }
+    }
+}
+
 private fun NavRail(tab: Tab, onSelect: (Tab) -> Unit) {
     Column(
         Modifier
