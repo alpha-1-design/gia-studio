@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Piano
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -165,10 +166,39 @@ fun PianoRollScreen(ctrl: StudioController) {
                     if (i >= 0) notes[i] = n.copy(length = (n.length + 1).coerceAtMost(16))
                 }
             }
+            Chip("DUPLICATE", false) {
+                selectedNote?.let { n ->
+                    val targetStep = n.step + n.length
+                    if (targetStep < steps && notes.none { it.midi == n.midi && it.step == targetStep }) {
+                        val copy = n.copy(step = targetStep)
+                        notes.add(copy)
+                        selectedKey = copy.midi to copy.step
+                    } else {
+                        ctrl.toast("No room to duplicate that note here.")
+                    }
+                }
+            }
             Chip("DELETE", false) {
                 selectedNote?.let { notes.remove(it) }
                 selectedKey = null
             }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("VELOCITY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Slider(
+                value = selectedNote?.velocity ?: velocity,
+                onValueChange = { v ->
+                    velocity = v
+                    selectedNote?.let { n ->
+                        val idx = notes.indexOfFirst { it.midi == n.midi && it.step == n.step }
+                        if (idx >= 0) notes[idx] = n.copy(velocity = v)
+                    }
+                },
+                enabled = selectedNote != null,
+                valueRange = 0.05f..1f,
+                modifier = Modifier.weight(1f)
+            )
+            Text(((selectedNote?.velocity ?: velocity) * 100).toInt().toString(), fontSize = 10.sp, color = Neo.Ink)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("NOTES  " + notes.size, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
