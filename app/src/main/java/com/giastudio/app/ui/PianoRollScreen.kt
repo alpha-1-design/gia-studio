@@ -544,7 +544,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                                     .pointerInput(midi, step, cellWidth) {
                                         val initialNote = note
                                         if (initialNote != null) {
-                                            var startingNote = initialNote
+                                            var startingNote: RollNote = initialNote
                                             var dragX = 0f
                                             var dragY = 0f
                                             var currentMidi = initialNote.midi
