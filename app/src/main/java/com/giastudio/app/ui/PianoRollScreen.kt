@@ -94,6 +94,24 @@ fun PianoRollScreen(ctrl: StudioController) {
     var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
     var pendingMidiExport by remember { mutableStateOf<ByteArray?>(null) }
+    val importMidiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Couldn't read MIDI file")
+                decodeStandardMidi(bytes)
+            }.onSuccess { imported ->
+                pushUndo()
+                notes.clear()
+                notes.addAll(imported.notes)
+                selectedKey = null
+                bars = ((imported.notes.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
+                ctrl.setBpm(imported.bpm)
+                ctrl.toast("Imported ${imported.notes.size} MIDI notes.")
+            }.onFailure {
+                ctrl.toast("Couldn't import that MIDI file.")
+            }
+        }
+    }
     val exportMidiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/midi")) { uri: Uri? ->
         val bytes = pendingMidiExport
         if (uri != null && bytes != null) {
@@ -361,6 +379,11 @@ fun PianoRollScreen(ctrl: StudioController) {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f).background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable {
+                importMidiLauncher.launch(arrayOf("audio/midi", "audio/x-midi", "application/octet-stream"))
+            }.padding(12.dp), contentAlignment = Alignment.Center) {
+                Text("⇧ IMPORT MIDI", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
+            }
+            Box(Modifier.weight(1f).background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable {
                 if (notes.isEmpty()) ctrl.toast("Add notes before exporting MIDI.")
                 else {
                     pendingMidiExport = encodeStandardMidi(notes.toList(), bpm)
@@ -456,4 +479,100 @@ private fun writeMidiVariableLength(out: ByteArrayOutputStream, rawValue: Int) {
         out.write(buffer and 0xFF)
         if ((buffer and 0x80) != 0) buffer = buffer shr 8 else break
     }
+}
+
+
+private data class ImportedMidiPattern(val notes: List<RollNote>, val bpm: Int)
+
+/** Read standard MIDI format 0/1 note events and quantize them to the 1/16 grid. */
+private fun decodeStandardMidi(bytes: ByteArray): ImportedMidiPattern {
+    class Reader(val data: ByteArray) {
+        var p = 0
+        fun u8(): Int {
+            require(p < data.size) { "Unexpected end of MIDI data" }
+            return data[p++].toInt() and 0xFF
+        }
+        fun u16(): Int = (u8() shl 8) or u8()
+        fun u32(): Int = (u8() shl 24) or (u8() shl 16) or (u8() shl 8) or u8()
+        fun vlq(): Int {
+            var value = 0
+            repeat(4) {
+                val b = u8()
+                value = (value shl 7) or (b and 0x7F)
+                if ((b and 0x80) == 0) return value
+            }
+            error("Invalid MIDI variable-length value")
+        }
+        fun chunk(length: Int): ByteArray {
+            require(length >= 0 && p + length <= data.size) { "Invalid MIDI chunk length" }
+            return data.copyOfRange(p, p + length).also { p += length }
+        }
+        fun skip(length: Int) { require(length >= 0 && p + length <= data.size); p += length }
+    }
+
+    val file = Reader(bytes)
+    require(String(file.chunk(4), Charsets.US_ASCII) == "MThd") { "Not a MIDI file" }
+    val headerLength = file.u32()
+    require(headerLength >= 6) { "Invalid MIDI header" }
+    val format = file.u16()
+    val trackCount = file.u16()
+    val division = file.u16()
+    require(format in 0..1 && trackCount > 0 && division in 1..0x7FFF) { "Unsupported MIDI format" }
+    file.skip(headerLength - 6)
+    data class Start(val tick: Int, val velocity: Int)
+    data class RawNote(val start: Int, val end: Int, val midi: Int, val velocity: Int)
+    val active = mutableMapOf<Pair<Int, Int>, ArrayDeque<Start>>()
+    val rawNotes = mutableListOf<RawNote>()
+    var microsPerQuarter = 500_000
+    repeat(trackCount) {
+        require(String(file.chunk(4), Charsets.US_ASCII) == "MTrk") { "Invalid MIDI track" }
+        val trackLength = file.u32()
+        val track = Reader(file.chunk(trackLength))
+        var tick = 0
+        var runningStatus = 0
+        while (track.p < track.data.size) {
+            tick += track.vlq()
+            var status = track.data[track.p].toInt() and 0xFF
+            if (status and 0x80 != 0) {
+                track.p++
+                runningStatus = status
+            } else {
+                status = runningStatus
+                require(status >= 0x80) { "Invalid MIDI running status" }
+            }
+            when (status) {
+                0xFF -> {
+                    val type = track.u8()
+                    val length = track.vlq()
+                    if (type == 0x51 && length == 3) {
+                        microsPerQuarter = (track.u8() shl 16) or (track.u8() shl 8) or track.u8()
+                    } else track.skip(length)
+                }
+                0xF0, 0xF7 -> track.skip(track.vlq())
+                else -> {
+                    val kind = status and 0xF0
+                    val channel = status and 0x0F
+                    val a = track.u8()
+                    val b = if (kind == 0xC0 || kind == 0xD0) 0 else track.u8()
+                    if (kind == 0x90 && b > 0) {
+                        active.getOrPut(channel to a) { ArrayDeque() }.addLast(Start(tick, b))
+                    } else if (kind == 0x80 || (kind == 0x90 && b == 0)) {
+                        val queue = active[channel to a]
+                        if (queue != null && queue.isNotEmpty()) {
+                            val start = queue.removeFirst()
+                            rawNotes += RawNote(start.tick, tick.coerceAtLeast(start.tick + 1), a, start.velocity)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    val ticksPerStep = division / 4.0
+    val imported = rawNotes.map { n ->
+        val step = (n.start / ticksPerStep).toInt().let { if (n.start / ticksPerStep - it >= 0.5) it + 1 else it }.coerceIn(0, 63)
+        val endStep = (n.end / ticksPerStep).toInt().let { if (n.end / ticksPerStep - it >= 0.5) it + 1 else it }
+        RollNote(n.midi.coerceIn(0, 127), step, (endStep - step).coerceIn(1, 16), (n.velocity / 127f).coerceIn(0.05f, 1f))
+    }.distinctBy { Triple(it.midi, it.step, it.length) }.sortedWith(compareBy<RollNote> { it.step }.thenBy { it.midi })
+    val bpm = (60_000_000.0 / microsPerQuarter.coerceAtLeast(1)).toInt().coerceIn(30, 300)
+    return ImportedMidiPattern(imported, bpm)
 }
