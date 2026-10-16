@@ -309,6 +309,7 @@ private fun PhoneNavBar(tab: Tab, onSelect: (Tab) -> Unit) {
     }
 }
 
+@Composable
 private fun NavRail(tab: Tab, onSelect: (Tab) -> Unit) {
     Column(
         Modifier
