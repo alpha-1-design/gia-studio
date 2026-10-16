@@ -93,6 +93,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var rootKey by remember { mutableIntStateOf(prefs.getInt("rootKey", 0).coerceIn(0, 11)) }
+    var minorScale by remember { mutableStateOf(prefs.getBoolean("minorScale", false)) }
     var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
     var velocityUndoSaved by remember { mutableStateOf(false) }
@@ -136,9 +137,9 @@ fun PianoRollScreen(ctrl: StudioController) {
     val steps = bars * 16
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
-    val scalePitchClasses = remember(rootKey) { setOf(0, 2, 4, 5, 7, 9, 11).map { (it + rootKey) % 12 }.toSet() }
+    val scalePitchClasses = remember(rootKey, minorScale) { (if (minorScale) setOf(0, 2, 3, 5, 7, 8, 10) else setOf(0, 2, 4, 5, 7, 9, 11)).map { (it + rootKey) % 12 }.toSet() }
 
-    LaunchedEffect(notes.toList(), sound, noteLength, velocity, swing, bars, octave, rootKey, cellWidth) {
+    LaunchedEffect(notes.toList(), sound, noteLength, velocity, swing, bars, octave, rootKey, minorScale, cellWidth) {
         val saved = JSONArray()
         notes.forEach { n ->
             saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
@@ -152,6 +153,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             .putInt("bars", bars)
             .putInt("octave", octave)
             .putInt("rootKey", rootKey)
+            .putBoolean("minorScale", minorScale)
             .putInt("cellWidth", cellWidth)
             .apply()
     }
@@ -161,6 +163,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             put("bpm", bpm)
             put("sound", sound.name)
             put("rootKey", rootKey)
+            put("minorScale", minorScale)
             put("swing", swing.toDouble())
             put("notes", JSONArray().apply {
                 notes.forEach { n ->
@@ -199,6 +202,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             selectedKey = null
             bars = ((decoded.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
             rootKey = payload.optInt("rootKey", rootKey).coerceIn(0, 11)
+            minorScale = payload.optBoolean("minorScale", minorScale)
             swing = payload.optDouble("swing", swing.toDouble()).toFloat().coerceIn(0f, 0.6f)
             val savedSound = runCatching { SynthSound.valueOf(payload.optString("sound", sound.name)) }.getOrDefault(sound)
             sound = savedSound
@@ -246,6 +250,8 @@ fun PianoRollScreen(ctrl: StudioController) {
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("KEY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Chip("MAJOR", !minorScale) { minorScale = false }
+            Chip("MINOR KEY", minorScale) { minorScale = true }
             listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B").forEachIndexed { index, label ->
                 Chip(label, rootKey == index) { rootKey = index }
             }
@@ -254,18 +260,21 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("CHORD BUILDER", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("I–V–vi–IV", false) {
                 pushUndo()
+                minorScale = false
                 val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(0, 4, 5, 3))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a major-pop progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("ii–V–I", false) {
                 pushUndo()
+                minorScale = false
                 val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(1, 4, 0, 0))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a ii–V–I progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("MINOR", false) {
                 pushUndo()
+                minorScale = true
                 val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(0, 5, 2, 6), minorKey = true)
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a minor progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
@@ -306,7 +315,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("MELODY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("GENERATE", false) {
                 pushUndo()
-                val scale = listOf(0, 2, 4, 5, 7, 9, 11)
+                val scale = if (minorScale) listOf(0, 2, 3, 5, 7, 8, 10) else listOf(0, 2, 4, 5, 7, 9, 11)
                 val rootMidi = 60 + (octave - 4) * 12 + rootKey - 12
                 val degrees = listOf(0, 2, 4, 2, 5, 4, 2, 1)
                 val generated = buildList {
