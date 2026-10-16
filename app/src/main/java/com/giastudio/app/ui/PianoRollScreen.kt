@@ -161,6 +161,10 @@ fun PianoRollScreen(ctrl: StudioController) {
     }
 
     fun savePattern(slot: String) {
+        if (notes.isEmpty()) {
+            ctrl.toast("Add notes before saving a pattern.")
+            return
+        }
         val payload = JSONObject().apply {
             put("bpm", bpm)
             put("sound", sound.name)
