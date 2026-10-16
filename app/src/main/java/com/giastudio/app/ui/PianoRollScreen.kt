@@ -205,9 +205,8 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text(octave.toString(), color = Neo.Ink, fontWeight = FontWeight.Bold)
             Chip("+", false) { octave = (octave + 1).coerceAtMost(6) }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(selectedNote?.let { "SELECTED  ${Notes.nameOf(it.midi)} · step ${it.step + 1}" } ?: "SELECT A NOTE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
-            Spacer(Modifier.weight(1f))
             Chip("UNDO", false) {
                 if (undoStack.isNotEmpty()) {
                     redoStack.add(notes.toList())
