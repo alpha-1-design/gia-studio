@@ -264,13 +264,12 @@ fun PianoRollScreen(ctrl: StudioController) {
                                                     dragY += amount.y
                                                     val stepDelta = (dragX / with(density) { cellWidth.dp.toPx() }).toInt()
                                                     val pitchDelta = -(dragY / with(density) { 29.dp.toPx() }).toInt()
-                                                    if (stepDelta != 0 || pitchDelta != 0) {
+                                                    val targetStep = (startingNote.step + stepDelta).coerceIn(0, 63)
+                                                    val targetMidi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
+                                                    if (targetStep != currentStep || targetMidi != currentMidi) {
                                                         val idx = notes.indexOfFirst { it.midi == currentMidi && it.step == currentStep }
                                                         if (idx >= 0) {
-                                                            val moved = startingNote.copy(
-                                                                step = (startingNote.step + stepDelta).coerceIn(0, 63),
-                                                                midi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
-                                                            )
+                                                            val moved = startingNote.copy(step = targetStep, midi = targetMidi)
                                                             notes[idx] = moved
                                                             currentMidi = moved.midi
                                                             currentStep = moved.step
