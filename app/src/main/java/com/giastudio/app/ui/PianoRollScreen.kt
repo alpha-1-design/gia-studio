@@ -68,6 +68,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             }
         }
     }
+    var selectedKey by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val undoStack = remember { mutableStateListOf<List<RollNote>>() }
     val redoStack = remember { mutableStateListOf<List<RollNote>>() }
     fun pushUndo() {
@@ -96,13 +97,15 @@ fun PianoRollScreen(ctrl: StudioController) {
     val exportMidiLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/midi")) { uri: Uri? ->
         val bytes = pendingMidiExport
         if (uri != null && bytes != null) {
-            runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } }
+            runCatching {
+                val stream = context.contentResolver.openOutputStream(uri) ?: error("No output stream")
+                stream.use { it.write(bytes) }
+            }
                 .onSuccess { ctrl.toast("MIDI file exported.") }
                 .onFailure { ctrl.toast("Couldn't save MIDI file.") }
         }
         pendingMidiExport = null
     }
-    var selectedKey by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val selectedNote = notes.firstOrNull { it.midi == selectedKey?.first && it.step == selectedKey?.second }
     val bpm = ctrl.project.bpm.coerceIn(30, 300)
     val steps = bars * 16
