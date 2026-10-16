@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Piano
@@ -41,6 +44,7 @@ private val rollSounds = listOf(SynthSound.EPIANO, SynthSound.PLUCK, SynthSound.
 @Composable
 fun PianoRollScreen(ctrl: StudioController) {
     val context = LocalContext.current
+    val density = LocalDensity.current
     val prefs = remember { context.getSharedPreferences("gia_piano_roll", Context.MODE_PRIVATE) }
     val notes = remember {
         mutableStateListOf<RollNote>().apply {
@@ -197,18 +201,53 @@ fun PianoRollScreen(ctrl: StudioController) {
                         }
                         repeat(steps) { step ->
                             val note = notes.firstOrNull { it.midi == midi && step >= it.step && step < it.step + it.length }
-                            Box(Modifier.width(cellWidth.dp).height(29.dp).background(
-                                if (note != null && selectedKey == (midi to note.step)) Neo.Accent
-                                else if (note != null) Neo.Ok
-                                else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
-                            ).border(0.5.dp, Neo.Ink.copy(alpha = 0.22f)).clickable {
-                                if (note != null) selectedKey = midi to note.step
-                                else {
-                                    notes.add(RollNote(midi, step, noteLength, velocity))
-                                    selectedKey = midi to step
-                                    ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
-                                }
-                            })
+                            Box(
+                                Modifier
+                                    .width(cellWidth.dp)
+                                    .height(29.dp)
+                                    .background(
+                                        if (note != null && selectedKey == (midi to note.step)) Neo.Accent
+                                        else if (note != null) Neo.Ok
+                                        else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
+                                    )
+                                    .border(0.5.dp, Neo.Ink.copy(alpha = 0.22f))
+                                    .clickable {
+                                        if (note != null) selectedKey = midi to note.step
+                                        else {
+                                            notes.add(RollNote(midi, step, noteLength, velocity))
+                                            selectedKey = midi to step
+                                            ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
+                                        }
+                                    }
+                                    .pointerInput(note?.step, midi, step, cellWidth) {
+                                        val startingNote = note
+                                        if (startingNote != null) {
+                                            var dragX = 0f
+                                            var dragY = 0f
+                                            detectDragGestures(
+                                                onDragStart = { selectedKey = startingNote.midi to startingNote.step },
+                                                onDrag = { change, amount ->
+                                                    change.consume()
+                                                    dragX += amount.x
+                                                    dragY += amount.y
+                                                    val stepDelta = (dragX / with(density) { cellWidth.dp.toPx() }).toInt()
+                                                    val pitchDelta = -(dragY / with(density) { 29.dp.toPx() }).toInt()
+                                                    if (stepDelta != 0 || pitchDelta != 0) {
+                                                        val idx = notes.indexOfFirst { it.midi == startingNote.midi && it.step == startingNote.step }
+                                                        if (idx >= 0) {
+                                                            val moved = startingNote.copy(
+                                                                step = (startingNote.step + stepDelta).coerceIn(0, 63),
+                                                                midi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
+                                                            )
+                                                            notes[idx] = moved
+                                                            selectedKey = moved.midi to moved.step
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                            )
                         }
                     }
                 }
