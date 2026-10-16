@@ -68,6 +68,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     var velocity by remember { mutableFloatStateOf(prefs.getFloat("velocity", 0.86f).coerceIn(0.05f, 1f)) }
     var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
+    var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
     var selectedKey by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     val selectedNote = notes.firstOrNull { it.midi == selectedKey?.first && it.step == selectedKey?.second }
@@ -76,7 +77,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
 
-    LaunchedEffect(notes.toList(), sound, noteLength, velocity, bars, octave) {
+    LaunchedEffect(notes.toList(), sound, noteLength, velocity, bars, octave, cellWidth) {
         val saved = JSONArray()
         notes.forEach { n ->
             saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
@@ -88,6 +89,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             .putFloat("velocity", velocity)
             .putInt("bars", bars)
             .putInt("octave", octave)
+            .putInt("cellWidth", cellWidth)
             .apply()
     }
 
@@ -116,7 +118,7 @@ fun PianoRollScreen(ctrl: StudioController) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             rollSounds.forEach { s -> Chip(s.label.uppercase(), sound == s) { sound = s } }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("BPM", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("−5", false) { ctrl.setBpm(bpm - 5) }
             Text(bpm.toString(), fontSize = 14.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
@@ -125,7 +127,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("BARS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(1, 2, 4).forEach { b -> Chip(b.toString(), bars == b) { bars = b } }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("LENGTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(1 to "1/16", 2 to "1/8", 4 to "1/4", 8 to "1/2").forEach { (n, label) -> Chip(label, noteLength == n) { noteLength = n } }
             Text("VEL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
@@ -167,7 +169,10 @@ fun PianoRollScreen(ctrl: StudioController) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("NOTES  " + notes.size, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Spacer(Modifier.weight(1f))
-            Text("Snap: 1/16", fontSize = 10.sp, color = Neo.InkSoft)
+            Text("SNAP 1/16", fontSize = 10.sp, color = Neo.InkSoft)
+            Chip("−", false) { cellWidth = (cellWidth - 4).coerceAtLeast(28) }
+            Text("ZOOM", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Neo.InkSoft)
+            Chip("+", false) { cellWidth = (cellWidth + 4).coerceAtMost(48) }
         }
         if (notes.isEmpty()) {
             Box(Modifier.fillMaxWidth().background(Neo.PaperRaised).border(1.dp, Neo.Ink.copy(alpha = 0.25f)).padding(10.dp)) {
@@ -179,7 +184,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                 Row {
                     Box(Modifier.width(48.dp).height(24.dp).background(Neo.Ink), contentAlignment = Alignment.Center) { Text("KEY", color = Neo.Paper, fontSize = 9.sp) }
                     repeat(steps) { step ->
-                        Box(Modifier.width(38.dp).height(24.dp).background(if (step % 16 == 0) Neo.Accent else Neo.PaperRaised).border(0.5.dp, Neo.Ink.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
+                        Box(Modifier.width(cellWidth.dp).height(24.dp).background(if (step % 16 == 0) Neo.Accent else Neo.PaperRaised).border(0.5.dp, Neo.Ink.copy(alpha = 0.3f)), contentAlignment = Alignment.Center) {
                             Text(if (step % 16 == 0) "B" + (step / 16 + 1) else if (step % 4 == 0) (step % 16 / 4 + 1).toString() else "·", fontSize = 9.sp, color = Neo.Ink)
                         }
                     }
@@ -192,7 +197,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                         }
                         repeat(steps) { step ->
                             val note = notes.firstOrNull { it.midi == midi && step >= it.step && step < it.step + it.length }
-                            Box(Modifier.width(38.dp).height(29.dp).background(
+                            Box(Modifier.width(cellWidth.dp).height(29.dp).background(
                                 if (note != null && selectedKey == (midi to note.step)) Neo.Accent
                                 else if (note != null) Neo.Ok
                                 else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
