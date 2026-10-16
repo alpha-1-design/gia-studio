@@ -249,6 +249,11 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
                                         }
                                     }
+                                    .then(
+                                        if (note != null && step == note.step + note.length - 1)
+                                            Modifier.padding(end = 1.dp)
+                                        else Modifier
+                                    )
                                     .pointerInput(midi, step, cellWidth) {
                                         val startingNote = note
                                         if (startingNote != null) {
@@ -294,7 +299,11 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             )
                                         }
                                     }
-                            )
+                            ) {
+                                if (note != null && step == note.step + note.length - 1) {
+                                    Text("↔", fontSize = 9.sp, color = Neo.Ink, fontWeight = FontWeight.Black)
+                                }
+                            }
                         }
                     }
                 }
