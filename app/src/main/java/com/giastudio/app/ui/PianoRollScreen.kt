@@ -59,21 +59,34 @@ fun PianoRollScreen(ctrl: StudioController) {
         }
     }
     val scope = rememberCoroutineScope()
-    var sound by remember { mutableStateOf(SynthSound.EPIANO) }
-    var noteLength by remember { mutableIntStateOf(2) }
-    var velocity by remember { mutableFloatStateOf(0.86f) }
-    var bars by remember { mutableIntStateOf(2) }
-    var octave by remember { mutableIntStateOf(4) }
+    var sound by remember {
+        mutableStateOf(runCatching {
+            SynthSound.valueOf(prefs.getString("sound", "EPIANO") ?: "EPIANO")
+        }.getOrDefault(SynthSound.EPIANO))
+    }
+    var noteLength by remember { mutableIntStateOf(prefs.getInt("noteLength", 2).coerceIn(1, 8)) }
+    var velocity by remember { mutableFloatStateOf(prefs.getFloat("velocity", 0.86f).coerceIn(0.05f, 1f)) }
+    var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
+    var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var playing by remember { mutableStateOf(false) }
     val bpm = ctrl.project.bpm.coerceIn(30, 300)
     val steps = bars * 16
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
 
-    LaunchedEffect(notes.toList()) {
+    LaunchedEffect(notes.toList(), sound, noteLength, velocity, bars, octave) {
         val saved = JSONArray()
-        notes.forEach { n -> saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble())) }
-        prefs.edit().putString("notes", saved.toString()).apply()
+        notes.forEach { n ->
+            saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
+        }
+        prefs.edit()
+            .putString("notes", saved.toString())
+            .putString("sound", sound.name)
+            .putInt("noteLength", noteLength)
+            .putFloat("velocity", velocity)
+            .putInt("bars", bars)
+            .putInt("octave", octave)
+            .apply()
     }
 
     fun spec(label: String): StemSpec? {
