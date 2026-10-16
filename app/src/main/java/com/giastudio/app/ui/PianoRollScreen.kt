@@ -256,19 +256,33 @@ fun PianoRollScreen(ctrl: StudioController) {
                                             var dragY = 0f
                                             var currentMidi = startingNote.midi
                                             var currentStep = startingNote.step
+                                            var currentLength = startingNote.length
+                                            var resizeMode = false
                                             detectDragGestures(
-                                                onDragStart = { selectedKey = startingNote.midi to startingNote.step },
+                                                onDragStart = { offset ->
+                                                    selectedKey = startingNote.midi to startingNote.step
+                                                    val edgePx = with(density) { 10.dp.toPx() }
+                                                    resizeMode = step == startingNote.step + startingNote.length - 1 &&
+                                                        offset.x >= size.width - edgePx
+                                                },
                                                 onDrag = { change, amount ->
                                                     change.consume()
                                                     dragX += amount.x
                                                     dragY += amount.y
                                                     val stepDelta = (dragX / with(density) { cellWidth.dp.toPx() }).toInt()
                                                     val pitchDelta = -(dragY / with(density) { 29.dp.toPx() }).toInt()
-                                                    val targetStep = (startingNote.step + stepDelta).coerceIn(0, 63)
-                                                    val targetMidi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
-                                                    if (targetStep != currentStep || targetMidi != currentMidi) {
-                                                        val idx = notes.indexOfFirst { it.midi == currentMidi && it.step == currentStep }
-                                                        if (idx >= 0) {
+                                                    val idx = notes.indexOfFirst { it.midi == currentMidi && it.step == currentStep }
+                                                    if (idx >= 0 && resizeMode) {
+                                                        val targetLength = (startingNote.length + stepDelta).coerceIn(1, minOf(16, steps - startingNote.step))
+                                                        if (targetLength != currentLength) {
+                                                            notes[idx] = startingNote.copy(length = targetLength)
+                                                            currentLength = targetLength
+                                                            selectedKey = startingNote.midi to startingNote.step
+                                                        }
+                                                    } else if (idx >= 0) {
+                                                        val targetStep = (startingNote.step + stepDelta).coerceIn(0, 63)
+                                                        val targetMidi = (startingNote.midi + pitchDelta).coerceIn(0, 127)
+                                                        if (targetStep != currentStep || targetMidi != currentMidi) {
                                                             val moved = startingNote.copy(step = targetStep, midi = targetMidi)
                                                             notes[idx] = moved
                                                             currentMidi = moved.midi
