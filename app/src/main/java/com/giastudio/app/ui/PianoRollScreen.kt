@@ -91,6 +91,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     var velocity by remember { mutableFloatStateOf(prefs.getFloat("velocity", 0.86f).coerceIn(0.05f, 1f)) }
     var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
+    var rootKey by remember { mutableIntStateOf(prefs.getInt("rootKey", 0).coerceIn(0, 11)) }
     var cellWidth by remember { mutableIntStateOf(prefs.getInt("cellWidth", 38).coerceIn(28, 48)) }
     var playing by remember { mutableStateOf(false) }
     var velocityUndoSaved by remember { mutableStateOf(false) }
@@ -147,6 +148,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             .putFloat("velocity", velocity)
             .putInt("bars", bars)
             .putInt("octave", octave)
+            .putInt("rootKey", rootKey)
             .putInt("cellWidth", cellWidth)
             .apply()
     }
@@ -186,24 +188,30 @@ fun PianoRollScreen(ctrl: StudioController) {
             listOf(1, 2, 4).forEach { b -> Chip(b.toString(), bars == b) { bars = b } }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("KEY", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B").forEachIndexed { index, label ->
+                Chip(label, rootKey == index) { rootKey = index }
+            }
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("CHORD BUILDER", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("I–V–vi–IV", false) {
                 pushUndo()
-                val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 4, 5, 3))
+                val generated = makeChordPattern(60 + (octave - 4) * 12 + rootKey, bars, listOf(0, 4, 5, 3))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
-                ctrl.toast("Added a major-pop chord progression.")
+                ctrl.toast("Added a major-pop progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("ii–V–I", false) {
                 pushUndo()
                 val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(1, 4, 0))
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
-                ctrl.toast("Added a ii–V–I progression.")
+                ctrl.toast("Added a ii–V–I progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("MINOR", false) {
                 pushUndo()
                 val generated = makeChordPattern(60 + (octave - 4) * 12, bars, listOf(0, 5, 2, 6), minorKey = true)
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
-                ctrl.toast("Added a minor progression.")
+                ctrl.toast("Added a minor progression in ${listOf("C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B")[rootKey]}.")
             }
             Chip("ARPEGGIATE", false) {
                 val chordGroups = notes.groupBy { it.step }.filterValues { group -> group.size >= 3 && group.any { it.length >= 8 } }
