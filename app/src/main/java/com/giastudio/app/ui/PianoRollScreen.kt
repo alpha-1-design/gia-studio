@@ -140,7 +140,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                     }
                 }
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.width(4.dp))
             Text("OCT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("−", false) { octave = (octave - 1).coerceAtLeast(2) }
             Text(octave.toString(), color = Neo.Ink, fontWeight = FontWeight.Bold)
