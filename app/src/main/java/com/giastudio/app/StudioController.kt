@@ -21,6 +21,7 @@ import com.giastudio.app.audio.writeMono16Wav
 import com.giastudio.app.model.Clip
 import com.giastudio.app.model.MAX_CLIPS_PER_TRACK
 import com.giastudio.app.model.MAX_TRACKS
+import com.giastudio.app.model.PianoRollPattern
 import com.giastudio.app.model.StudioProject
 import com.giastudio.app.model.Track
 import com.giastudio.app.model.projectFromJson
@@ -820,6 +821,26 @@ class StudioController(private val appContext: Context) {
     fun stopPreview() {
         engine.stopPreview()
         previewing = false
+    }
+
+    /** Save an editable MIDI pattern into the current project/session. */
+    fun savePianoRollPattern(pattern: PianoRollPattern) {
+        recordHistory()
+        val patterns = project.pianoRollPatterns.toMutableList()
+        patterns.removeAll { it.id == pattern.id }
+        patterns.add(pattern)
+        project = project.copy(pianoRollPatterns = patterns)
+        pushSnapshot()
+        dirty = true
+        toast("Saved ${pattern.name} to this project.")
+    }
+
+    fun deletePianoRollPattern(patternId: String) {
+        if (project.pianoRollPatterns.none { it.id == patternId }) return
+        recordHistory()
+        project = project.copy(pianoRollPatterns = project.pianoRollPatterns.filterNot { it.id == patternId }.toMutableList())
+        pushSnapshot()
+        dirty = true
     }
 
     /**
