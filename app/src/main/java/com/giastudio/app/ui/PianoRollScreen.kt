@@ -69,6 +69,8 @@ fun PianoRollScreen(ctrl: StudioController) {
     var bars by remember { mutableIntStateOf(prefs.getInt("bars", 2).coerceIn(1, 4)) }
     var octave by remember { mutableIntStateOf(prefs.getInt("octave", 4).coerceIn(2, 6)) }
     var playing by remember { mutableStateOf(false) }
+    var selectedKey by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    val selectedNote = notes.firstOrNull { it.midi == selectedKey?.first && it.step == selectedKey?.second }
     val bpm = ctrl.project.bpm.coerceIn(30, 300)
     val steps = bars * 16
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
@@ -108,7 +110,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Icon(Icons.Filled.Piano, null, tint = Neo.Ink, modifier = Modifier.size(25.dp))
             Column {
                 Text("PIANO ROLL", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
-                Text("Tap cells to add/remove notes. Draft autosaves on this phone.", fontSize = 11.sp, color = Neo.InkSoft)
+                Text("Tap an empty cell to add a note; tap a note to select it. Draft autosaves.", fontSize = 11.sp, color = Neo.InkSoft)
             }
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -136,6 +138,26 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text(octave.toString(), color = Neo.Ink, fontWeight = FontWeight.Bold)
             Chip("+", false) { octave = (octave + 1).coerceAtMost(6) }
         }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(selectedNote?.let { "SELECTED  ${Notes.nameOf(it.midi)} · step ${it.step + 1}" } ?: "SELECT A NOTE", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            Spacer(Modifier.weight(1f))
+            Chip("− LEN", false) {
+                selectedNote?.let { n ->
+                    val i = notes.indexOf(n)
+                    if (i >= 0) notes[i] = n.copy(length = (n.length - 1).coerceAtLeast(1))
+                }
+            }
+            Chip("+ LEN", false) {
+                selectedNote?.let { n ->
+                    val i = notes.indexOf(n)
+                    if (i >= 0) notes[i] = n.copy(length = (n.length + 1).coerceAtMost(16))
+                }
+            }
+            Chip("DELETE", false) {
+                selectedNote?.let { notes.remove(it) }
+                selectedKey = null
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("NOTES  " + notes.size, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Spacer(Modifier.weight(1f))
@@ -159,14 +181,18 @@ fun PianoRollScreen(ctrl: StudioController) {
                         }
                         repeat(steps) { step ->
                             val note = notes.firstOrNull { it.midi == midi && it.step == step }
-                            Box(Modifier.width(38.dp).height(29.dp).background(if (note != null) Neo.Ok else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper)
-                                .border(0.5.dp, Neo.Ink.copy(alpha = 0.22f)).clickable {
-                                    if (note != null) notes.remove(note)
-                                    else {
-                                        notes.add(RollNote(midi, step, noteLength, velocity))
-                                        ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, 0.82f), loop = false)
-                                    }
-                                })
+                            Box(Modifier.width(38.dp).height(29.dp).background(
+                                if (note != null && selectedKey == (midi to step)) Neo.Accent
+                                else if (note != null) Neo.Ok
+                                else if (step % 4 == 0) Neo.PaperRaised else Neo.Paper
+                            ).border(0.5.dp, Neo.Ink.copy(alpha = 0.22f)).clickable {
+                                if (note != null) selectedKey = midi to step
+                                else {
+                                    notes.add(RollNote(midi, step, noteLength, velocity))
+                                    selectedKey = midi to step
+                                    ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, velocity), loop = false)
+                                }
+                            })
                         }
                     }
                 }
