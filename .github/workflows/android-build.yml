@@ -37,7 +37,7 @@ jobs:
       - name: Build debug APK
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon :app:assembleDebug -PwithNative
+          ./gradlew --no-daemon -PwithNative :app:testDebugUnitTest :app:assembleDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
