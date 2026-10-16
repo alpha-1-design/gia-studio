@@ -205,6 +205,27 @@ fun PianoRollScreen(ctrl: StudioController) {
                 notes.addAll(generated.filterNot { candidate -> notes.any { it.midi == candidate.midi && it.step == candidate.step } })
                 ctrl.toast("Added a minor progression.")
             }
+            Chip("ARPEGGIATE", false) {
+                val chordGroups = notes.groupBy { it.step }.filterValues { group -> group.size >= 3 && group.any { it.length >= 8 } }
+                if (chordGroups.isEmpty()) {
+                    ctrl.toast("Add a chord progression first.")
+                } else {
+                    pushUndo()
+                    val chordStarts = chordGroups.keys
+                    val sourceChords = chordGroups.values.map { group -> group.sortedBy { it.midi } }
+                    notes.removeAll { it.step in chordStarts && it.length >= 8 }
+                    sourceChords.forEach { chord ->
+                        val baseStep = chord.first().step
+                        val pitchesInChord = chord.map { it.midi }.distinct().sorted()
+                        val pattern = listOf(0, 1, 2, 1, 0, 1, 2, 1)
+                        pattern.forEachIndexed { index, pitchIndex ->
+                            val midi = pitchesInChord[pitchIndex.coerceAtMost(pitchesInChord.lastIndex)]
+                            notes.add(RollNote(midi, baseStep + index * 2, 2, chord.first().velocity))
+                        }
+                    }
+                    ctrl.toast("Turned chords into an arpeggio.")
+                }
+            }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("LENGTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
