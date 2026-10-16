@@ -130,7 +130,13 @@ fun PianoRollScreen(ctrl: StudioController) {
             listOf(1 to "1/16", 2 to "1/8", 4 to "1/4", 8 to "1/2").forEach { (n, label) -> Chip(label, noteLength == n) { noteLength = n } }
             Text("VEL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(0.45f to "SOFT", 0.70f to "MID", 0.95f to "HARD").forEach { (v, label) ->
-                Chip(label, velocity == v) { velocity = v }
+                Chip(label, velocity == v) {
+                    velocity = v
+                    selectedNote?.let { n ->
+                        val i = notes.indexOf(n)
+                        if (i >= 0) notes[i] = n.copy(velocity = v)
+                    }
+                }
             }
             Spacer(Modifier.weight(1f))
             Text("OCT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
