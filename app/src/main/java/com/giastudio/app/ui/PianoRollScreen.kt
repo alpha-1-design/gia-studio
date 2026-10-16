@@ -1,5 +1,8 @@
 package com.giastudio.app.ui
 
+import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,10 +40,28 @@ private val rollSounds = listOf(SynthSound.EPIANO, SynthSound.PLUCK, SynthSound.
 /** Touch-first piano roll backed by GIA's existing synth and arrangement renderer. */
 @Composable
 fun PianoRollScreen(ctrl: StudioController) {
-    val notes = remember { mutableStateListOf<RollNote>() }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("gia_piano_roll", Context.MODE_PRIVATE) }
+    val notes = remember {
+        mutableStateListOf<RollNote>().apply {
+            runCatching {
+                val saved = JSONArray(prefs.getString("notes", "[]") ?: "[]")
+                for (i in 0 until saved.length()) {
+                    val item = saved.getJSONObject(i)
+                    add(RollNote(
+                        midi = item.optInt("midi", 60).coerceIn(0, 127),
+                        step = item.optInt("step", 0).coerceIn(0, 63),
+                        length = item.optInt("length", 2).coerceIn(1, 16),
+                        velocity = item.optDouble("velocity", 0.86).toFloat().coerceIn(0.05f, 1f),
+                    ))
+                }
+            }
+        }
+    }
     val scope = rememberCoroutineScope()
     var sound by remember { mutableStateOf(SynthSound.EPIANO) }
     var noteLength by remember { mutableIntStateOf(2) }
+    var velocity by remember { mutableFloatStateOf(0.86f) }
     var bars by remember { mutableIntStateOf(2) }
     var octave by remember { mutableIntStateOf(4) }
     var playing by remember { mutableStateOf(false) }
@@ -47,6 +69,12 @@ fun PianoRollScreen(ctrl: StudioController) {
     val steps = bars * 16
     val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
+
+    LaunchedEffect(notes.toList()) {
+        val saved = JSONArray()
+        notes.forEach { n -> saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble())) }
+        prefs.edit().putString("notes", saved.toString()).apply()
+    }
 
     fun spec(label: String): StemSpec? {
         if (notes.isEmpty()) return null
@@ -67,7 +95,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Icon(Icons.Filled.Piano, null, tint = Neo.Ink, modifier = Modifier.size(25.dp))
             Column {
                 Text("PIANO ROLL", fontSize = 19.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
-                Text("Tap a cell to add a note. Tap it again to remove it.", fontSize = 11.sp, color = Neo.InkSoft)
+                Text("Tap cells to add/remove notes. Draft autosaves on this phone.", fontSize = 11.sp, color = Neo.InkSoft)
             }
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -85,6 +113,10 @@ fun PianoRollScreen(ctrl: StudioController) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("LENGTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             listOf(1 to "1/16", 2 to "1/8", 4 to "1/4", 8 to "1/2").forEach { (n, label) -> Chip(label, noteLength == n) { noteLength = n } }
+            Text("VEL", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            listOf(0.45f to "SOFT", 0.70f to "MID", 0.95f to "HARD").forEach { (v, label) ->
+                Chip(label, velocity == v) { velocity = v }
+            }
             Spacer(Modifier.weight(1f))
             Text("OCT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Chip("−", false) { octave = (octave - 1).coerceAtLeast(2) }
@@ -118,7 +150,7 @@ fun PianoRollScreen(ctrl: StudioController) {
                                 .border(0.5.dp, Neo.Ink.copy(alpha = 0.22f)).clickable {
                                     if (note != null) notes.remove(note)
                                     else {
-                                        notes.add(RollNote(midi, step, noteLength))
+                                        notes.add(RollNote(midi, step, noteLength, velocity))
                                         ctrl.playPreview(Synth.renderNote(sound, midi, ctrl.sampleRate, 0.18, 0.82f), loop = false)
                                     }
                                 })
