@@ -137,7 +137,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     val selectedNote = notes.firstOrNull { it.midi == selectedKey?.first && it.step == selectedKey?.second }
     val bpm = ctrl.project.bpm.coerceIn(30, 300)
     val steps = bars * 16
-    val pitches = (48 + (octave - 4) * 12..71 + (octave - 4) * 12).reversed().toList()
+    val pitches = (48 + (octave - 4) * 12 + rootKey..71 + (octave - 4) * 12 + rootKey).reversed().toList()
     val blackKeys = setOf(1, 3, 6, 8, 10)
     val scalePitchClasses = remember(rootKey, minorScale) { (if (minorScale) setOf(0, 2, 3, 5, 7, 8, 10) else setOf(0, 2, 4, 5, 7, 9, 11)).map { (it + rootKey) % 12 }.toSet() }
 
