@@ -392,6 +392,8 @@ fun PianoRollScreen(ctrl: StudioController) {
             }.padding(12.dp), contentAlignment = Alignment.Center) {
                 Text("⇩ EXPORT MIDI", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f).background(if (playing) Neo.Record else Neo.Ink).clickable {
                 if (playing) { ctrl.stopPreview(); playing = false }
                 else {
@@ -535,7 +537,7 @@ private fun decodeStandardMidi(bytes: ByteArray): ImportedMidiPattern {
             var status = track.data[track.p].toInt() and 0xFF
             if (status and 0x80 != 0) {
                 track.p++
-                runningStatus = status
+                if (status < 0xF0) runningStatus = status
             } else {
                 status = runningStatus
                 require(status >= 0x80) { "Invalid MIDI running status" }
