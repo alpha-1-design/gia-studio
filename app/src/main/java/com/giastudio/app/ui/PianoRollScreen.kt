@@ -123,7 +123,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             Chip("+5", false) { ctrl.setBpm(bpm + 5) }
             Spacer(Modifier.width(4.dp))
             Text("BARS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
-            listOf(1, 2, 4).forEach { b -> Chip(b.toString(), bars == b) { bars = b; notes.removeAll { it.step >= b * 16 } } }
+            listOf(1, 2, 4).forEach { b -> Chip(b.toString(), bars == b) { bars = b } }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Text("LENGTH", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
@@ -168,6 +168,11 @@ fun PianoRollScreen(ctrl: StudioController) {
             Text("NOTES  " + notes.size, fontSize = 12.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
             Spacer(Modifier.weight(1f))
             Text("Snap: 1/16", fontSize = 10.sp, color = Neo.InkSoft)
+        }
+        if (notes.isEmpty()) {
+            Box(Modifier.fillMaxWidth().background(Neo.PaperRaised).border(1.dp, Neo.Ink.copy(alpha = 0.25f)).padding(10.dp)) {
+                Text("YOUR PATTERN IS EMPTY\nTap a pitch row and beat cell below to add your first note.", color = Neo.InkSoft, fontSize = 11.sp, lineHeight = 16.sp)
+            }
         }
         Row(Modifier.horizontalScroll(rememberScrollState())) {
             Column {
