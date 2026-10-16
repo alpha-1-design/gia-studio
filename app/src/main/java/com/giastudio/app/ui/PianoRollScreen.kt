@@ -138,7 +138,7 @@ fun PianoRollScreen(ctrl: StudioController) {
     val blackKeys = setOf(1, 3, 6, 8, 10)
     val scalePitchClasses = remember(rootKey) { setOf(0, 2, 4, 5, 7, 9, 11).map { (it + rootKey) % 12 }.toSet() }
 
-    LaunchedEffect(notes.toList(), sound, noteLength, velocity, bars, octave, cellWidth) {
+    LaunchedEffect(notes.toList(), sound, noteLength, velocity, swing, bars, octave, rootKey, cellWidth) {
         val saved = JSONArray()
         notes.forEach { n ->
             saved.put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
@@ -161,6 +161,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             put("bpm", bpm)
             put("sound", sound.name)
             put("rootKey", rootKey)
+            put("swing", swing.toDouble())
             put("notes", JSONArray().apply {
                 notes.forEach { n ->
                     put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
@@ -198,6 +199,7 @@ fun PianoRollScreen(ctrl: StudioController) {
             selectedKey = null
             bars = ((decoded.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
             rootKey = payload.optInt("rootKey", rootKey).coerceIn(0, 11)
+            swing = payload.optDouble("swing", swing.toDouble()).toFloat().coerceIn(0f, 0.6f)
             val savedSound = runCatching { SynthSound.valueOf(payload.optString("sound", sound.name)) }.getOrDefault(sound)
             sound = savedSound
             ctrl.setBpm(payload.optInt("bpm", bpm).coerceIn(30, 300))
