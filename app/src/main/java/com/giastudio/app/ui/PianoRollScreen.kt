@@ -153,6 +153,57 @@ fun PianoRollScreen(ctrl: StudioController) {
             .apply()
     }
 
+    fun savePattern(slot: String) {
+        val payload = JSONObject().apply {
+            put("bpm", bpm)
+            put("sound", sound.name)
+            put("rootKey", rootKey)
+            put("notes", JSONArray().apply {
+                notes.forEach { n ->
+                    put(JSONObject().put("midi", n.midi).put("step", n.step).put("length", n.length).put("velocity", n.velocity.toDouble()))
+                }
+            })
+        }
+        prefs.edit().putString("pattern_$slot", payload.toString()).apply()
+        ctrl.toast("Saved pattern $slot.")
+    }
+
+    fun loadPattern(slot: String) {
+        val raw = prefs.getString("pattern_$slot", null)
+        if (raw == null) {
+            ctrl.toast("Pattern $slot is empty. Save a pattern there first.")
+            return
+        }
+        runCatching {
+            val payload = JSONObject(raw)
+            val savedNotes = payload.optJSONArray("notes") ?: JSONArray()
+            val decoded = buildList {
+                for (i in 0 until savedNotes.length()) {
+                    val item = savedNotes.getJSONObject(i)
+                    add(RollNote(
+                        midi = item.optInt("midi", 60).coerceIn(0, 127),
+                        step = item.optInt("step", 0).coerceIn(0, 63),
+                        length = item.optInt("length", 2).coerceIn(1, 16),
+                        velocity = item.optDouble("velocity", 0.86).toFloat().coerceIn(0.05f, 1f),
+                    ))
+                }
+            }
+            require(decoded.isNotEmpty()) { "Empty pattern" }
+            pushUndo()
+            notes.clear()
+            notes.addAll(decoded)
+            selectedKey = null
+            bars = ((decoded.maxOfOrNull { it.step + it.length } ?: 16) + 15).div(16).coerceIn(1, 4)
+            rootKey = payload.optInt("rootKey", rootKey).coerceIn(0, 11)
+            val savedSound = runCatching { SynthSound.valueOf(payload.optString("sound", sound.name)) }.getOrDefault(sound)
+            sound = savedSound
+            ctrl.setBpm(payload.optInt("bpm", bpm).coerceIn(30, 300))
+            ctrl.toast("Loaded pattern $slot.")
+        }.onFailure {
+            ctrl.toast("Couldn't load pattern $slot.")
+        }
+    }
+
     fun spec(label: String): StemSpec? {
         if (notes.isEmpty()) return null
         val events = notes.map { n ->
@@ -233,6 +284,13 @@ fun PianoRollScreen(ctrl: StudioController) {
                     }
                     ctrl.toast("Turned chords into an arpeggio.")
                 }
+            }
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text("PATTERN SLOTS", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Neo.Ink)
+            listOf("A", "B", "C").forEach { slot ->
+                Chip("SAVE $slot", false) { savePattern(slot) }
+                Chip("LOAD $slot", false) { loadPattern(slot) }
             }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
