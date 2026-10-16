@@ -604,7 +604,7 @@ fun PianoRollScreen(ctrl: StudioController) {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.weight(1f).background(Neo.PaperRaised).border(1.dp, Neo.Ink).clickable {
-                importMidiLauncher.launch(arrayOf("audio/midi", "audio/x-midi", "application/octet-stream"))
+                importMidiLauncher.launch(arrayOf("audio/midi", "audio/x-midi", "application/x-midi", "application/octet-stream"))
             }.padding(12.dp), contentAlignment = Alignment.Center) {
                 Text("⇧ IMPORT MIDI", color = Neo.Ink, fontSize = 11.sp, fontWeight = FontWeight.Black)
             }
