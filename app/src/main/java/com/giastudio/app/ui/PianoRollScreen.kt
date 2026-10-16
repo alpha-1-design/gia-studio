@@ -327,16 +327,21 @@ fun PianoRollScreen(ctrl: StudioController) {
                                         }
                                     }
                                     .pointerInput(midi, step, cellWidth) {
-                                        val startingNote = note
-                                        if (startingNote != null) {
+                                        val initialNote = note
+                                        if (initialNote != null) {
+                                            var startingNote = initialNote
                                             var dragX = 0f
                                             var dragY = 0f
-                                            var currentMidi = startingNote.midi
-                                            var currentStep = startingNote.step
-                                            var currentLength = startingNote.length
+                                            var currentMidi = initialNote.midi
+                                            var currentStep = initialNote.step
+                                            var currentLength = initialNote.length
                                             var resizeMode = false
                                             detectDragGestures(
                                                 onDragStart = { offset ->
+                                                    notes.firstOrNull { it.midi == midi && step >= it.step && step < it.step + it.length }?.let { startingNote = it }
+                                                    currentMidi = startingNote.midi
+                                                    currentStep = startingNote.step
+                                                    currentLength = startingNote.length
                                                     pushUndo()
                                                     selectedKey = startingNote.midi to startingNote.step
                                                     val edgePx = with(density) { 10.dp.toPx() }
