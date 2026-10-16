@@ -92,6 +92,7 @@ data class StudioProject(
     var masterVolume: Float = 0.9f,
     var masterLimiter: Boolean = true,
     val tracks: MutableList<Track> = defaultTracks(),
+    val pianoRollPatterns: MutableList<PianoRollPattern> = mutableListOf(),
 ) {
     /** End of the longest clip in the session (seconds). */
     fun arrangementEndSec(): Double =
@@ -114,6 +115,68 @@ fun defaultTracks(): MutableList<Track> =
             armed = i == 0,
         )
     }.toMutableList()
+
+
+/** Editable MIDI pattern saved inside a GIA project/session. */
+data class PianoRollNote(
+    val midi: Int,
+    val step: Int,
+    val length: Int,
+    val velocity: Float = 0.86f,
+)
+
+data class PianoRollPattern(
+    val id: String,
+    var name: String,
+    var bpm: Int,
+    var instrument: String,
+    var rootKey: Int = 0,
+    var minorScale: Boolean = false,
+    var swing: Float = 0f,
+    val notes: MutableList<PianoRollNote> = mutableListOf(),
+)
+
+fun PianoRollPattern.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("name", name)
+    put("bpm", bpm)
+    put("instrument", instrument)
+    put("rootKey", rootKey)
+    put("minorScale", minorScale)
+    put("swing", swing.toDouble())
+    val arr = JSONArray()
+    notes.forEach { note ->
+        arr.put(JSONObject()
+            .put("midi", note.midi)
+            .put("step", note.step)
+            .put("length", note.length)
+            .put("velocity", note.velocity.toDouble()))
+    }
+    put("notes", arr)
+}
+
+fun pianoRollPatternFromJson(o: JSONObject): PianoRollPattern {
+    val arr = o.optJSONArray("notes") ?: JSONArray()
+    val notes = MutableList(arr.length()) { i ->
+        val n = arr.getJSONObject(i)
+        PianoRollNote(
+            midi = n.optInt("midi", 60).coerceIn(0, 127),
+            step = n.optInt("step", 0).coerceIn(0, 63),
+            length = n.optInt("length", 2).coerceIn(1, 16),
+            velocity = n.optDouble("velocity", 0.86).toFloat().coerceIn(0.05f, 1f),
+        )
+    }
+    return PianoRollPattern(
+        id = o.optString("id", "pattern"),
+        name = o.optString("name", "Piano Roll"),
+        bpm = o.optInt("bpm", 120).coerceIn(30, 300),
+        instrument = o.optString("instrument", "EPIANO"),
+        rootKey = o.optInt("rootKey", 0).coerceIn(0, 11),
+        minorScale = o.optBoolean("minorScale", false),
+        swing = o.optDouble("swing", 0.0).toFloat().coerceIn(0f, 0.6f),
+        notes = notes,
+    )
+}
 
 // ---------------------------------------------------------------------------
 // JSON (org.json ships with the Android platform — no extra dependency)
@@ -226,6 +289,9 @@ fun StudioProject.toJson(): JSONObject = JSONObject().apply {
     val tracksJson = JSONArray()
     for (t in tracks) tracksJson.put(t.toJson())
     put("tracks", tracksJson)
+    val patternsJson = JSONArray()
+    for (pattern in pianoRollPatterns) patternsJson.put(pattern.toJson())
+    put("pianoRollPatterns", patternsJson)
 }
 
 fun projectFromJson(o: JSONObject): StudioProject = StudioProject(
@@ -237,4 +303,8 @@ fun projectFromJson(o: JSONObject): StudioProject = StudioProject(
         val arr = o.optJSONArray("tracks") ?: JSONArray()
         MutableList(arr.length()) { i -> trackFromJson(arr.getJSONObject(i)) }
     }.ifEmpty { defaultTracks() },
+    pianoRollPatterns = run {
+        val arr = o.optJSONArray("pianoRollPatterns") ?: JSONArray()
+        MutableList(arr.length()) { i -> pianoRollPatternFromJson(arr.getJSONObject(i)) }
+    },
 )
